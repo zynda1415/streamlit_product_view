@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Modern CSS styling
+# Modern CSS styling with YouTube-style filters
 st.markdown("""
     <style>
     /* Main styling */
@@ -47,16 +47,49 @@ st.markdown("""
         font-weight: 300;
     }
     
-    /* Category pills */
-    .category-pill {
+    /* YouTube-style filter pills */
+    .filter-container {
+        display: flex;
+        gap: 10px;
+        padding: 1rem 0 2rem 0;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .filter-pill {
         display: inline-block;
-        padding: 0.5rem 1.5rem;
+        padding: 0.5rem 1.2rem;
+        background: #f1f1f1;
+        color: #030303;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        text-decoration: none;
+    }
+    
+    .filter-pill:hover {
+        background: #e5e5e5;
+    }
+    
+    .filter-pill-active {
+        background: #030303;
+        color: white;
+        border: 1px solid #030303;
+    }
+    
+    /* Category badge on cards */
+    .category-badge {
+        display: inline-block;
+        padding: 0.4rem 1rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border-radius: 25px;
+        border-radius: 6px;
         font-weight: 600;
-        margin: 0.5rem 0.5rem 0.5rem 0;
-        font-size: 0.9rem;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
     }
     
     /* Project cards */
@@ -82,6 +115,20 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 0.5rem;
+    }
+    
+    .project-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0.5rem 0;
+    }
+    
+    .project-description {
+        color: #6c757d;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin: 0.5rem 0;
     }
     
     /* Images */
@@ -150,12 +197,6 @@ st.markdown("""
         transform: scale(1.05);
     }
     
-    /* Filter buttons */
-    .filter-container {
-        margin: 2rem 0;
-        text-align: center;
-    }
-    
     /* Divider */
     .custom-divider {
         height: 2px;
@@ -163,9 +204,32 @@ st.markdown("""
         margin: 2rem 0;
     }
     
-    /* Hide Streamlit branding */
+    /* Hide Streamlit elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    
+    /* Streamlit button styling */
+    .stButton > button {
+        background: #f1f1f1;
+        color: #030303;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 0.5rem 1.2rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        background: #e5e5e5;
+        border-color: #d0d0d0;
+    }
+    
+    /* Active filter button */
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+        background: #030303 !important;
+        color: white !important;
+        border-color: #030303 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -211,7 +275,7 @@ def load_data():
     """Load data from Google Sheets"""
     sheet = get_google_sheet()
     if sheet is None:
-        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
+        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category', 'Description'])
     
     try:
         data = sheet.get_all_values()
@@ -220,21 +284,24 @@ def load_data():
             df = pd.DataFrame(data[1:], columns=data[0])
             df = df[df['URL'].str.strip() != '']
             
-            # Add Title and Category columns if they don't exist
-            if 'Title' not in df.columns:
-                df['Title'] = ''
-            if 'Category' not in df.columns:
-                df['Category'] = ''
+            # Add columns if they don't exist
+            for col in ['Title', 'Category', 'Description']:
+                if col not in df.columns:
+                    df[col] = ''
             
             return df
         else:
-            return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
+            return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category', 'Description'])
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
-        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
+        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category', 'Description'])
 
 # Main app
 def main():
+    # Initialize session state for filter
+    if 'selected_filter' not in st.session_state:
+        st.session_state.selected_filter = 'All'
+    
     # Hero Section
     st.markdown("""
         <div class="hero-section">
@@ -251,16 +318,41 @@ def main():
         st.info("🎨 Portfolio coming soon! Check back later for amazing designs.")
         return
     
+    # Get unique categories
+    categories = ['All']
+    if 'Category' in df.columns:
+        unique_cats = sorted([cat.strip() for cat in df['Category'].unique() if cat.strip()])
+        categories.extend(unique_cats)
+    
+    # YouTube-style filter buttons
+    st.markdown("### 🎯 Browse by Category")
+    
+    # Create filter buttons
+    cols = st.columns(len(categories))
+    for idx, category in enumerate(categories):
+        with cols[idx]:
+            # Custom button styling based on selection
+            button_type = "secondary" if st.session_state.selected_filter == category else "primary"
+            if st.button(category, key=f"filter_{category}", use_container_width=True):
+                st.session_state.selected_filter = category
+                st.rerun()
+    
+    # Filter data based on selection
+    if st.session_state.selected_filter != 'All':
+        filtered_df = df[df['Category'].str.strip() == st.session_state.selected_filter]
+    else:
+        filtered_df = df
+    
     # Stats Section
-    total_projects = len(df)
-    total_images = len(df[df['Image/Video'].str.lower().str.contains('image', na=False)])
-    total_videos = len(df[df['Image/Video'].str.lower().str.contains('video', na=False)])
+    total_projects = len(filtered_df)
+    total_images = len(filtered_df[filtered_df['Image/Video'].str.lower().str.contains('image', na=False)])
+    total_videos = len(filtered_df[filtered_df['Image/Video'].str.lower().str.contains('video', na=False)])
     
     st.markdown(f"""
         <div class="stats-container">
             <div class="stat-box">
                 <div class="stat-number">{total_projects}</div>
-                <div class="stat-label">Total Projects</div>
+                <div class="stat-label">Projects</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number">{total_images}</div>
@@ -273,34 +365,23 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
-    # Filter by category if available
-    if 'Category' in df.columns and df['Category'].str.strip().any():
-        categories = ['All'] + sorted(df['Category'].str.strip().unique().tolist())
-        categories = [cat for cat in categories if cat]  # Remove empty strings
-        
-        if len(categories) > 1:
-            st.markdown('<div class="filter-container">', unsafe_allow_html=True)
-            selected_category = st.selectbox(
-                "Filter by Category",
-                categories,
-                label_visibility="collapsed"
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            if selected_category != 'All':
-                df = df[df['Category'].str.strip() == selected_category]
-    
     # Divider
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+    
+    # Display message if no projects in category
+    if filtered_df.empty:
+        st.info(f"No projects found in '{st.session_state.selected_filter}' category.")
+        return
     
     # Display projects in a grid
     cols_per_row = 2
     
-    for idx, row in df.iterrows():
+    for idx, (_, row) in enumerate(filtered_df.iterrows()):
         url = row.get('URL', '').strip()
         content_type = row.get('Image/Video', '').strip().lower()
         title = row.get('Title', '').strip()
         category = row.get('Category', '').strip()
+        description = row.get('Description', '').strip()
         
         if not url:
             continue
@@ -314,10 +395,12 @@ def main():
         with cols[col_idx]:
             st.markdown('<div class="project-card">', unsafe_allow_html=True)
             
-            # Project number and category
+            # Project number
             st.markdown(f'<div class="project-number">Project {idx + 1}</div>', unsafe_allow_html=True)
+            
+            # Category badge
             if category:
-                st.markdown(f'<span class="category-pill">{category}</span>', unsafe_allow_html=True)
+                st.markdown(f'<span class="category-badge">{category}</span>', unsafe_allow_html=True)
             
             try:
                 if 'video' in content_type or 'youtube' in url.lower() or 'youtu.be' in url.lower():
@@ -337,9 +420,13 @@ def main():
                     except:
                         st.image(url, use_container_width=True)
                 
-                # Display title if available
+                # Display title
                 if title:
-                    st.markdown(f"**{title}**")
+                    st.markdown(f'<div class="project-title">{title}</div>', unsafe_allow_html=True)
+                
+                # Display description
+                if description:
+                    st.markdown(f'<div class="project-description">{description}</div>', unsafe_allow_html=True)
             
             except Exception as e:
                 st.error(f"Error loading content")
