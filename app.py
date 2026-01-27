@@ -11,27 +11,161 @@ import re
 st.set_page_config(
     page_title="Interior Design Portfolio",
     page_icon="🏠",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling
+# Modern CSS styling
 st.markdown("""
     <style>
+    /* Main styling */
     .main {
-        padding: 2rem;
+        padding: 0rem 1rem;
     }
-    .stImage {
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    h1 {
-        color: #2c3e50;
+    
+    /* Hero section */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 4rem 2rem;
+        border-radius: 20px;
         text-align: center;
-        margin-bottom: 2rem;
+        color: white;
+        margin-bottom: 3rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
     }
-    .product-container {
-        margin-bottom: 2rem;
+    
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
+    
+    .hero-subtitle {
+        font-size: 1.3rem;
+        opacity: 0.95;
+        font-weight: 300;
+    }
+    
+    /* Category pills */
+    .category-pill {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 25px;
+        font-weight: 600;
+        margin: 0.5rem 0.5rem 0.5rem 0;
+        font-size: 0.9rem;
+    }
+    
+    /* Project cards */
+    .project-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        margin-bottom: 2rem;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .project-number {
+        color: #667eea;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Images */
+    .stImage {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    /* Stats section */
+    .stats-container {
+        display: flex;
+        justify-content: space-around;
+        margin: 2rem 0 3rem 0;
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 15px;
+    }
+    
+    .stat-box {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #667eea;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    /* Footer */
+    .footer {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        margin-top: 4rem;
+    }
+    
+    .footer-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+    
+    .contact-button {
+        display: inline-block;
+        padding: 1rem 2.5rem;
+        background: white;
+        color: #667eea;
+        border-radius: 30px;
+        font-weight: 700;
+        text-decoration: none;
+        margin-top: 1rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .contact-button:hover {
+        transform: scale(1.05);
+    }
+    
+    /* Filter buttons */
+    .filter-container {
+        margin: 2rem 0;
+        text-align: center;
+    }
+    
+    /* Divider */
+    .custom-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 2rem 0;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -53,109 +187,120 @@ def get_youtube_id(url):
 def get_google_sheet():
     """Connect to Google Sheets using service account credentials"""
     try:
-        # Define the scope
         scope = [
             'https://www.googleapis.com/auth/spreadsheets.readonly',
             'https://www.googleapis.com/auth/drive.readonly'
         ]
         
-        # Load credentials from Streamlit secrets
         credentials = Credentials.from_service_account_info(
             st.secrets["gcp_service_account"],
             scopes=scope
         )
         
-        # Authorize and connect
         client = gspread.authorize(credentials)
-        
-        # Open the sheet by name
         sheet = client.open("Streamlit Sheet product view").sheet1
         
         return sheet
-    except gspread.exceptions.SpreadsheetNotFound:
-        st.error("❌ Could not find the Google Sheet 'Streamlit Sheet product view'. Please check the sheet name.")
-        return None
-    except gspread.exceptions.APIError as e:
-        st.error(f"❌ Google Sheets API Error: {str(e)}")
-        return None
     except Exception as e:
-        st.error(f"❌ Error connecting to Google Sheets: {str(e)}")
-        st.info("💡 Make sure the sheet is shared with: streamlit-key@gen-lang-client-0089966801.iam.gserviceaccount.com")
+        st.error(f"❌ Error: {str(e)}")
         return None
 
 # Function to load data from Google Sheets
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=300)
 def load_data():
     """Load data from Google Sheets"""
     sheet = get_google_sheet()
     if sheet is None:
-        return pd.DataFrame(columns=['URL', 'Image/Video'])
+        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
     
     try:
-        # Get all values
         data = sheet.get_all_values()
         
-        # Debug info
-        st.write(f"📊 Retrieved {len(data)} rows from Google Sheets")
-        
-        # Convert to DataFrame
         if len(data) > 1:
             df = pd.DataFrame(data[1:], columns=data[0])
-            # Remove empty rows
             df = df[df['URL'].str.strip() != '']
+            
+            # Add Title and Category columns if they don't exist
+            if 'Title' not in df.columns:
+                df['Title'] = ''
+            if 'Category' not in df.columns:
+                df['Category'] = ''
+            
             return df
-        elif len(data) == 1:
-            # Only headers, no data
-            st.warning("⚠️ Google Sheet found but no data rows. Please add some content.")
-            return pd.DataFrame(columns=data[0])
         else:
-            # Empty sheet
-            st.warning("⚠️ Google Sheet is empty. Please add headers and data.")
-            return pd.DataFrame(columns=['URL', 'Image/Video'])
+            return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
-        import traceback
-        st.code(traceback.format_exc())
-        return pd.DataFrame(columns=['URL', 'Image/Video'])
+        return pd.DataFrame(columns=['URL', 'Image/Video', 'Title', 'Category'])
 
 # Main app
 def main():
-    # Header
-    st.title("🏠 Interior Design Portfolio")
-    st.markdown("---")
-    
-    # Add refresh button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col3:
-        if st.button("🔄 Refresh Content"):
-            st.cache_data.clear()
-            st.rerun()
+    # Hero Section
+    st.markdown("""
+        <div class="hero-section">
+            <div class="hero-title">✨ Interior Design Portfolio</div>
+            <div class="hero-subtitle">Transform Your Space into a Masterpiece</div>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Load data
-    with st.spinner("Loading portfolio..."):
+    with st.spinner("Loading our latest projects..."):
         df = load_data()
     
     if df.empty:
-        st.info("No products found. Please add content to your Google Sheet.")
-        st.markdown("""
-        ### Instructions:
-        1. Open your Google Sheet: **Streamlit Sheet product view**
-        2. Add URLs in column A (images or YouTube videos)
-        3. Add the type in column B ("Image" or "Video")
-        4. Click the Refresh button above
-        """)
+        st.info("🎨 Portfolio coming soon! Check back later for amazing designs.")
         return
     
-    # Filter and display content
-    st.subheader(f"📸 Showcasing {len(df)} Projects")
-    st.markdown("---")
+    # Stats Section
+    total_projects = len(df)
+    total_images = len(df[df['Image/Video'].str.lower().str.contains('image', na=False)])
+    total_videos = len(df[df['Image/Video'].str.lower().str.contains('video', na=False)])
     
-    # Create columns for grid layout
+    st.markdown(f"""
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-number">{total_projects}</div>
+                <div class="stat-label">Total Projects</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{total_images}</div>
+                <div class="stat-label">Photos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{total_videos}</div>
+                <div class="stat-label">Videos</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Filter by category if available
+    if 'Category' in df.columns and df['Category'].str.strip().any():
+        categories = ['All'] + sorted(df['Category'].str.strip().unique().tolist())
+        categories = [cat for cat in categories if cat]  # Remove empty strings
+        
+        if len(categories) > 1:
+            st.markdown('<div class="filter-container">', unsafe_allow_html=True)
+            selected_category = st.selectbox(
+                "Filter by Category",
+                categories,
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            if selected_category != 'All':
+                df = df[df['Category'].str.strip() == selected_category]
+    
+    # Divider
+    st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+    
+    # Display projects in a grid
     cols_per_row = 2
     
     for idx, row in df.iterrows():
         url = row.get('URL', '').strip()
         content_type = row.get('Image/Video', '').strip().lower()
+        title = row.get('Title', '').strip()
+        category = row.get('Category', '').strip()
         
         if not url:
             continue
@@ -167,44 +312,50 @@ def main():
         col_idx = idx % cols_per_row
         
         with cols[col_idx]:
-            with st.container():
-                try:
-                    if 'video' in content_type or 'youtube' in url.lower() or 'youtu.be' in url.lower():
-                        # Display YouTube video
-                        video_id = get_youtube_id(url)
-                        if video_id:
-                            st.markdown(f"### Project {idx + 1}")
-                            st.video(f"https://www.youtube.com/watch?v={video_id}")
-                        else:
-                            st.warning(f"Invalid YouTube URL: {url}")
-                    
-                    elif 'image' in content_type or any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
-                        # Display image
-                        st.markdown(f"### Project {idx + 1}")
-                        try:
-                            # Try to load image from URL
-                            response = requests.get(url, timeout=10)
-                            img = Image.open(BytesIO(response.content))
-                            st.image(img, use_container_width=True)
-                        except Exception as e:
-                            # If direct URL doesn't work, try as markdown
-                            st.image(url, use_container_width=True)
-                    
+            st.markdown('<div class="project-card">', unsafe_allow_html=True)
+            
+            # Project number and category
+            st.markdown(f'<div class="project-number">Project {idx + 1}</div>', unsafe_allow_html=True)
+            if category:
+                st.markdown(f'<span class="category-pill">{category}</span>', unsafe_allow_html=True)
+            
+            try:
+                if 'video' in content_type or 'youtube' in url.lower() or 'youtu.be' in url.lower():
+                    # Display YouTube video
+                    video_id = get_youtube_id(url)
+                    if video_id:
+                        st.video(f"https://www.youtube.com/watch?v={video_id}")
                     else:
-                        st.warning(f"Unknown content type for: {url}")
+                        st.warning(f"Invalid YouTube URL")
                 
-                except Exception as e:
-                    st.error(f"Error loading content: {str(e)}")
+                elif 'image' in content_type or any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
+                    # Display image
+                    try:
+                        response = requests.get(url, timeout=10)
+                        img = Image.open(BytesIO(response.content))
+                        st.image(img, use_container_width=True)
+                    except:
+                        st.image(url, use_container_width=True)
                 
-                st.markdown("---")
+                # Display title if available
+                if title:
+                    st.markdown(f"**{title}**")
+            
+            except Exception as e:
+                st.error(f"Error loading content")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
     
-    # Footer
-    st.markdown("---")
+    # Footer CTA
     st.markdown("""
-        <div style='text-align: center; color: #7f8c8d; padding: 2rem;'>
-            <p>Interior Design Portfolio | Powered by Streamlit</p>
+        <div class="footer">
+            <div class="footer-title">Ready to Transform Your Space?</div>
+            <p>Let's create something beautiful together</p>
+            <a href="mailto:your-email@example.com" class="contact-button">
+                📧 Contact Us
+            </a>
         </div>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
