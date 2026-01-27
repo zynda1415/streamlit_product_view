@@ -55,8 +55,8 @@ def get_google_sheet():
     try:
         # Define the scope
         scope = [
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
+            'https://www.googleapis.com/auth/drive.readonly'
         ]
         
         # Load credentials from Streamlit secrets
@@ -72,8 +72,15 @@ def get_google_sheet():
         sheet = client.open("Streamlit Sheet product view").sheet1
         
         return sheet
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error("❌ Could not find the Google Sheet 'Streamlit Sheet product view'. Please check the sheet name.")
+        return None
+    except gspread.exceptions.APIError as e:
+        st.error(f"❌ Google Sheets API Error: {str(e)}")
+        return None
     except Exception as e:
-        st.error(f"Error connecting to Google Sheets: {str(e)}")
+        st.error(f"❌ Error connecting to Google Sheets: {str(e)}")
+        st.info("💡 Make sure the sheet is shared with: streamlit-key@gen-lang-client-0089966801.iam.gserviceaccount.com")
         return None
 
 # Function to load data from Google Sheets
@@ -81,21 +88,35 @@ def get_google_sheet():
 def load_data():
     """Load data from Google Sheets"""
     sheet = get_google_sheet()
-    if sheet:
-        try:
-            # Get all values
-            data = sheet.get_all_values()
-            
-            # Convert to DataFrame
-            if len(data) > 1:
-                df = pd.DataFrame(data[1:], columns=data[0])
-                return df
-            else:
-                return pd.DataFrame(columns=['URL', 'Image/Video'])
-        except Exception as e:
-            st.error(f"Error loading data: {str(e)}")
+    if sheet is None:
+        return pd.DataFrame(columns=['URL', 'Image/Video'])
+    
+    try:
+        # Get all values
+        data = sheet.get_all_values()
+        
+        # Debug info
+        st.write(f"📊 Retrieved {len(data)} rows from Google Sheets")
+        
+        # Convert to DataFrame
+        if len(data) > 1:
+            df = pd.DataFrame(data[1:], columns=data[0])
+            # Remove empty rows
+            df = df[df['URL'].str.strip() != '']
+            return df
+        elif len(data) == 1:
+            # Only headers, no data
+            st.warning("⚠️ Google Sheet found but no data rows. Please add some content.")
+            return pd.DataFrame(columns=data[0])
+        else:
+            # Empty sheet
+            st.warning("⚠️ Google Sheet is empty. Please add headers and data.")
             return pd.DataFrame(columns=['URL', 'Image/Video'])
-    return pd.DataFrame(columns=['URL', 'Image/Video'])
+    except Exception as e:
+        st.error(f"❌ Error loading data: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
+        return pd.DataFrame(columns=['URL', 'Image/Video'])
 
 # Main app
 def main():
