@@ -12,15 +12,22 @@ def get_gspread_client():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
+    
     # Load credentials from Streamlit Secrets
-    creds_dict = st.secrets["gcp_service_account"]
+    # We create a copy to avoid mutating the original secrets object
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    
+    # FIX: This line handles the PEM/Private Key formatting error
+    if "private_key" in creds_dict:
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    
     credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
     return gspread.authorize(credentials)
 
-@st.cache_data(ttl=600)  # Cache data for 10 minutes to stay fast
+@st.cache_data(ttl=300)  # Data refreshes every 5 minutes
 def load_data(sheet_name):
     client = get_gspread_client()
-    # Replace with your actual Sheet Name or Sheet ID
+    # Ensure this matches your Google Sheet name exactly
     sheet = client.open(sheet_name).get_worksheet(0)
     data = sheet.get_all_records()
     return pd.DataFrame(data)
@@ -30,21 +37,22 @@ def display_content(url):
     image_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
     video_extensions = ('.mp4', '.webm', '.ogg', '.mov')
     
-    lowered_url = url.lower()
+    lowered_url = str(url).lower()
     
     if any(lowered_url.endswith(ext) for ext in image_extensions):
         st.image(url, use_container_width=True)
     elif any(lowered_url.endswith(ext) for ext in video_extensions):
         st.video(url)
     else:
-        st.warning(f"Unsupported format or direct link: [Click here to view]({url})")
+        st.info(f"🔗 [View Media Link]({url})")
 
 def main():
     st.title("📦 Product Showcase")
     st.markdown("---")
 
-    # UPDATE THIS: Put your Google Sheet name here
-    SHEET_NAME = "Your_Google_Sheet_Name_Here" 
+    # --- UPDATE THIS TO YOUR SHEET NAME ---
+    SHEET_NAME = "Your_Sheet_Name_Here" 
+    # ---------------------------------------
     
     try:
         df = load_data(SHEET_NAME)
@@ -58,22 +66,23 @@ def main():
                 if i + j < len(df):
                     row = df.iloc[i + j]
                     with col:
-                        # Display Media
                         display_content(row['URL'])
                         
-                        # Display Tags in an organized way
-                        with st.expander("View Details", expanded=True):
-                            st.markdown(f"**Kurdish:** {row['Kurdish Tags']}")
+                        # Displaying Kurdish and Arabic Tags
+                        with st.expander("Product Details / زانیاری بەرهەم", expanded=True):
+                            st.subheader("Kurdish")
+                            st.write(f"**Tags:** {row['Kurdish Tags']}")
                             st.caption(f"🎨 {row['Kurdish Color Tags']} | 🧵 {row['Kurdish Material Tags']}")
                             
-                            st.markdown("---")
+                            st.divider()
                             
-                            st.markdown(f"**Arabic:** {row['Arabic Tags']}")
+                            st.subheader("Arabic")
+                            st.write(f"**Tags:** {row['Arabic Tags']}")
                             st.caption(f"🎨 {row['Arabic Colors Tags']} | 🧵 {row['Arabic Material Tags']}")
                             
     except Exception as e:
-        st.error(f"Error connecting to Google Sheets: {e}")
-        st.info("Make sure the Google Sheet name matches and it is shared with the service account email.")
+        st.error(f"Error: {e}")
+        st.warning("Tip: Check that the Sheet Name is correct and shared with the service account email.")
 
 if __name__ == "__main__":
     main()
