@@ -5,11 +5,11 @@ from google.oauth2.service_account import Credentials
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
-    page_title="Asanar Product Preview",
+    page_title="asankar Product Preview",
     layout="wide"
 )
 
-st.title("🖼️ Asanar Product Images & Videos Preview")
+st.title("🖼️ asankar Product Images & Videos Preview")
 
 # ---------------- AUTH ----------------
 scope = [
@@ -25,7 +25,7 @@ credentials = Credentials.from_service_account_info(
 gc = gspread.authorize(credentials)
 
 # ---------------- LOAD SHEET ----------------
-SHEET_NAME = "asanar_product_images"
+SHEET_NAME = "asankar_product_images"
 
 try:
     sh = gc.open(SHEET_NAME)
