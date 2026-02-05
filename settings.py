@@ -7,12 +7,12 @@ DATA_FILE = "app_data.json"
 # ---------------- JSON DATA HANDLING ----------------
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"logo_url": None, "language": "Kurdish", "products": []}
+        return {"logo_url": None, "language": "Kurdish"}
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, ValueError):
-        return {"logo_url": None, "language": "Kurdish", "products": []}
+        return {"logo_url": None, "language": "Kurdish"}
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -37,20 +37,3 @@ def select_language(data):
     data["language"] = lang
     save_data(data)
     return lang
-
-# ---------------- PRODUCTS MANAGEMENT ----------------
-def add_product(data):
-    st.sidebar.header("Add Product")
-    url = st.sidebar.text_input("Product URL")
-    kur_tags = st.sidebar.text_input("Kurdish Tags")
-    ar_tags = st.sidebar.text_input("Arabic Tags")
-    if st.sidebar.button("Add Product"):
-        if url:
-            product = {
-                "URL": url,
-                "Kurdish Tags": kur_tags,
-                "Arabic Tags": ar_tags
-            }
-            data["products"].append(product)
-            save_data(data)
-            st.sidebar.success("✅ Product added!")
