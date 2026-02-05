@@ -79,22 +79,31 @@ cols = st.columns(3)
 
 for index, row in filtered_df.iterrows():
     url = row["URL"]
-    lower_url = url.lower()
+    url_lower = url.lower()
+    url_base = url_lower.split("?")[0]  # remove query parameters
 
     col = cols[index % 3]
 
     with col:
-        if lower_url.endswith((".jpg", ".jpeg", ".png", ".webp")):
+        # Images
+        if url_base.endswith((".jpg", ".jpeg", ".png", ".webp")):
             if media_type in ["All", "Images"]:
                 st.image(url, use_container_width=True)
 
-        elif lower_url.endswith((".mp4", ".mov", ".webm")):
+        # Videos
+        elif url_base.endswith((".mp4", ".mov", ".webm")):
+            if media_type in ["All", "Videos"]:
+                st.video(url)
+
+        # YouTube links
+        elif "youtu.be" in url or "youtube.com/watch" in url:
             if media_type in ["All", "Videos"]:
                 st.video(url)
 
         else:
-            st.warning("Unsupported file type")
+            st.warning(f"Unsupported file type: {url}")
 
+        # Caption
         st.caption(
             f"""
             **Kurdish:** {row['Kurdish Tags']}  
