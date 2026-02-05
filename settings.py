@@ -7,14 +7,50 @@ DATA_FILE = "app_data.json"
 # ---------------- JSON DATA HANDLING ----------------
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"logo": None, "language": "Kurdish", "products": []}
+        return {"logo_url": None, "language": "Kurdish", "products": []}
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, ValueError):
-        # If file is empty or corrupted, reset to default
-        return {"logo": None, "language": "Kurdish", "products": []}
+        return {"logo_url": None, "language": "Kurdish", "products": []}
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+# ---------------- LOGO URL ----------------
+def set_logo_url(data):
+    st.sidebar.header("Logo URL")
+    url = st.sidebar.text_input("Paste Logo URL", value=data.get("logo_url", ""))
+    if url:
+        data["logo_url"] = url
+        save_data(data)
+    return data.get("logo_url")
+
+# ---------------- LANGUAGE SELECTION ----------------
+def select_language(data):
+    lang = st.sidebar.selectbox(
+        "Select Language",
+        ["Kurdish", "Arabic"],
+        index=0 if data.get("language")=="Kurdish" else 1
+    )
+    data["language"] = lang
+    save_data(data)
+    return lang
+
+# ---------------- PRODUCTS MANAGEMENT ----------------
+def add_product(data):
+    st.sidebar.header("Add Product")
+    url = st.sidebar.text_input("Product URL")
+    kur_tags = st.sidebar.text_input("Kurdish Tags")
+    ar_tags = st.sidebar.text_input("Arabic Tags")
+    if st.sidebar.button("Add Product"):
+        if url:
+            product = {
+                "URL": url,
+                "Kurdish Tags": kur_tags,
+                "Arabic Tags": ar_tags
+            }
+            data["products"].append(product)
+            save_data(data)
+            st.sidebar.success("✅ Product added!")
