@@ -6,7 +6,7 @@ from settings import load_data, save_data, set_logo_url, select_language
 from display import show_products
 
 # ---------------- CONFIG ----------------
-st.set_page_config(page_title="Asanar Product Preview", layout="wide")
+st.set_page_config(page_title="asankar Product Preview", layout="wide")
 
 # ---------------- LOAD SETTINGS ----------------
 data = load_data()
@@ -32,7 +32,7 @@ credentials = Credentials.from_service_account_info(
 
 gc = gspread.authorize(credentials)
 
-SHEET_NAME = "asanar_product_images"
+SHEET_NAME = "asankar_product_images"
 
 try:
     sh = gc.open(SHEET_NAME)
@@ -58,4 +58,4 @@ elif menu == "Settings":
 
 elif menu == "About":
     st.title("ℹ️ About")
-    st.write("Asanar Product Preview App.\nManage products, preview images/videos, and configure settings.")
+    st.write("asankar Product Preview App.\nManage products, preview images/videos, and configure settings.")
