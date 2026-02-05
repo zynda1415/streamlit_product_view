@@ -1,5 +1,5 @@
 import streamlit as st
-from settings import load_data, save_data, upload_logo, select_language, add_product
+from settings import load_data, save_data, set_logo_url, select_language, add_product
 from display import show_products
 
 # ---------------- CONFIG ----------------
@@ -9,8 +9,9 @@ st.set_page_config(page_title="Asanar Product Preview", layout="wide")
 data = load_data()
 
 # ---------------- SIDEBAR ----------------
-st.sidebar.image(data["logo"], use_column_width=True) if data.get("logo") else None
-upload_logo(data)
+logo_url = set_logo_url(data)
+if logo_url:
+    st.sidebar.image(logo_url, use_column_width=True)
 
 st.sidebar.header("Menu")
 menu = st.sidebar.radio("", ["Products", "Settings", "About"])
@@ -28,7 +29,7 @@ if menu == "Products":
 elif menu == "Settings":
     st.title("⚙️ Settings")
     st.write("Change your app settings here.")
-    upload_logo(data)
+    set_logo_url(data)
     select_language(data)
 
 elif menu == "About":
