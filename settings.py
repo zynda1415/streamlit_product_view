@@ -3,57 +3,218 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+from datetime import datetime
+import time
 
 APP_DATA_FILE = "app_data.json"
 
-# ---------- App data ----------
+# ---------- App data with error handling ----------
 def load_app_data():
-    """Load persisted app settings from JSON"""
+    """Load persisted app settings from JSON with error handling"""
     try:
         with open(APP_DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"language": "Kurdish"}
+            data = json.load(f)
+            # Validate data structure
+            if not isinstance(data, dict):
+                return get_default_app_data()
+            return data
+    except FileNotFoundError:
+        return get_default_app_data()
+    except json.JSONDecodeError:
+        st.warning("⚠️ Settings file corrupted. Using defaults.")
+        return get_default_app_data()
+    except Exception as e:
+        st.error(f"Error loading settings: {e}")
+        return get_default_app_data()
+
+def get_default_app_data():
+    """Return default app settings"""
+    return {
+        "language": "Kurdish",
+        "last_updated": datetime.now().isoformat(),
+        "theme": "light"
+    }
 
 def save_app_data(data):
-    """Save app settings to JSON"""
-    with open(APP_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """Save app settings to JSON with error handling"""
+    try:
+        data["last_updated"] = datetime.now().isoformat()
+        with open(APP_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"❌ Error saving settings: {e}")
+        return False
 
-# ---------- Google Sheet ----------
-@st.cache_data(ttl=1)  # auto refresh every hour
+# ---------- Google Sheet with improved error handling ----------
+@st.cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
 def load_google_sheet():
-    """Load Google Sheet as a Pandas DataFrame"""
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
+    """
+    Load Google Sheet as a Pandas DataFrame with comprehensive error handling
+    Returns: DataFrame with product data
+    """
+    try:
+        # Validate secrets exist
+        if "gcp_service_account" not in st.secrets:
+            raise ValueError("Missing 'gcp_service_account' in secrets.toml")
+        
+        if "google_sheet_id" not in st.secrets:
+            raise ValueError("Missing 'google_sheet_id' in secrets.toml")
+        
+        # Setup credentials
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scopes
+        )
+        
+        # Authorize and connect
+        client = gspread.authorize(creds)
+        
+        # Get sheet with retry logic
+        max_retries = 3
+        retry_delay = 1
+        
+        for attempt in range(max_retries):
+            try:
+                sheet = client.open_by_key(st.secrets["google_sheet_id"]).sheet1
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise e
+        
+        # Get all records
+        records = sheet.get_all_records()
+        
+        if not records:
+            st.warning("⚠️ Google Sheet is empty")
+            return pd.DataFrame()
+        
+        # Create DataFrame
+        df = pd.DataFrame(records)
+        
+        # Clean column names
+        df.columns = df.columns.str.strip()
+        
+        # Remove empty rows
+        df = df.dropna(how='all')
+        
+        # Validate required columns
+        required_cols = ["URL"]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            st.warning(f"⚠️ Missing columns in sheet: {', '.join(missing_cols)}")
+        
+        return df
+        
+    except ValueError as ve:
+        st.error(f"❌ Configuration Error: {ve}")
+        st.info("💡 Please add the required secrets to your .streamlit/secrets.toml file")
+        return pd.DataFrame()
+        
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error("❌ Google Sheet not found. Please check the sheet ID in secrets.toml")
+        return pd.DataFrame()
+        
+    except gspread.exceptions.APIError as api_err:
+        st.error(f"❌ Google Sheets API Error: {api_err}")
+        st.info("💡 Please check your service account permissions")
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"❌ Unexpected error loading data: {e}")
+        st.info("💡 Please contact support if this persists")
+        return pd.DataFrame()
 
-    # Google Sheet ID from Streamlit secrets
-    sheet = client.open_by_key(st.secrets["google_sheet_id"]).sheet1
+def refresh_data():
+    """Clear cache and reload data"""
+    st.cache_data.clear()
+    st.success("✅ Data refreshed!")
+    st.rerun()
 
-    df = pd.DataFrame(sheet.get_all_records())
-    df.columns = df.columns.str.strip()  # remove any leading/trailing spaces
-    return df
-
-# ---------- Sidebar ----------
+# ---------- Sidebar with enhanced controls ----------
 def sidebar_controls():
-    """Display sidebar with fallback logo and language switch"""
+    """Display enhanced sidebar with logo and language switch"""
+    
+    # Load settings
     app_data = load_app_data()
-    st.sidebar.image("fallback_logo.png", use_container_width=True)
-
+    
+    # Logo display with fallback
+    try:
+        st.sidebar.image("fallback_logo.png", use_container_width=True)
+    except Exception:
+        st.sidebar.markdown("## 🏢 Asankar")
+    
+    st.sidebar.markdown("---")
+    
+    # Language selector
+    st.sidebar.markdown("### 🌐 Language / زمان")
     language = st.sidebar.radio(
-        "Language / زمان",
+        "Choose language",
         ["Kurdish", "Arabic"],
-        index=0 if app_data.get("language", "Kurdish") == "Kurdish" else 1
+        index=0 if app_data.get("language", "Kurdish") == "Kurdish" else 1,
+        label_visibility="collapsed",
+        help="Switch between Kurdish and Arabic"
     )
-
-    app_data["language"] = language
-    save_app_data(app_data)
-
+    
+    # Save language preference
+    if language != app_data.get("language"):
+        app_data["language"] = language
+        save_app_data(app_data)
+    
+    st.sidebar.markdown("---")
+    
+    # Advanced options in expander
+    with st.sidebar.expander("⚙️ Advanced Options"):
+        # Refresh data button
+        if st.button("🔄 Refresh Data", use_container_width=True):
+            refresh_data()
+        
+        # Cache info
+        st.caption("Data is cached for 1 hour for better performance")
+        
+        # Show last update time
+        if "last_updated" in app_data:
+            try:
+                last_update = datetime.fromisoformat(app_data["last_updated"])
+                st.caption(f"Last updated: {last_update.strftime('%Y-%m-%d %H:%M')}")
+            except:
+                pass
+    
     return language
+
+# ---------- Export functionality ----------
+@st.cache_data(ttl=300)
+def export_to_csv(df, language):
+    """Export filtered data to CSV"""
+    try:
+        csv = df.to_csv(index=False, encoding='utf-8-sig')
+        return csv
+    except Exception as e:
+        st.error(f"Error exporting data: {e}")
+        return None
+
+def show_export_options(df, language):
+    """Display export options in sidebar"""
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📥 Export")
+    
+    if st.sidebar.button("📄 Export to CSV", use_container_width=True):
+        csv = export_to_csv(df, language)
+        if csv:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            st.sidebar.download_button(
+                label="⬇️ Download CSV",
+                data=csv,
+                file_name=f"asankar_products_{timestamp}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
