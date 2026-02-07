@@ -1,53 +1,96 @@
-import json
 import streamlit as st
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
+import uuid
 
-APP_DATA_FILE = "app_data.json"
+FALLBACK_LOGO = "fallback_logo.png"
 
-# ---------- App data ----------
-def load_app_data():
-    try:
-        with open(APP_DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"language": "Kurdish"}
+# ---------- LOGO ----------
+def show_logo(in_sidebar=False):
+    from PIL import Image
+    import os
+    if os.path.exists(FALLBACK_LOGO):
+        img = Image.open(FALLBACK_LOGO)
+        if in_sidebar:
+            st.sidebar.image(img, use_container_width=True)
+        else:
+            st.image(img, use_container_width=True)
 
-def save_app_data(data):
-    with open(APP_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+# ---------- MEDIA HELPERS ----------
+def is_youtube(url: str) -> bool:
+    return "youtube.com" in url or "youtu.be" in url
 
-# ---------- Google Sheet ----------
-@st.cache_data(ttl=3600)  # auto refresh every hour
-def load_google_sheet():
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
+def is_image(url: str) -> bool:
+    return any(url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"])
 
-    sheet = client.open_by_key(st.secrets["google_sheet_id"]).sheet1
-    df = pd.DataFrame(sheet.get_all_records())
-    df.columns = df.columns.str.strip()  # remove spaces
-    return df
+# ---------- MASONRY GRID ----------
+def masonry_grid(df, language, columns=3, visible_count=12):
+    if df.empty:
+        st.info("No products to display")
+        return
 
-# ---------- Sidebar ----------
-def sidebar_controls():
-    app_data = load_app_data()
-    st.sidebar.image("fallback_logo.png", use_container_width=True)
+    # Pinterest masonry CSS
+    st.markdown(f"""
+    <style>
+    .masonry {{
+        column-count: {columns};
+        column-gap: 1rem;
+    }}
+    @media (max-width: 768px) {{
+        .masonry {{ column-count: 2; }}
+    }}
+    @media (max-width: 480px) {{
+        .masonry {{ column-count: 1; }}
+    }}
+    .card {{
+        break-inside: avoid;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: white;
+    }}
+    .card img {{
+        width: 100%;
+        display: block;
+    }}
+    .card-content {{
+        padding: 0.5rem 0.75rem;
+        font-size: 14px;
+        color: #444;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-    language = st.sidebar.radio(
-        "Language / زمان",
-        ["Kurdish", "Arabic"],
-        index=0 if app_data.get("language", "Kurdish") == "Kurdish" else 1
-    )
+    st.markdown('<div class="masonry">', unsafe_allow_html=True)
 
-    app_data["language"] = language
-    save_app_data(app_data)
+    for _, row in df.head(visible_count).iterrows():
+        key = str(uuid.uuid4())
 
-    return language
+        if language == "Kurdish":
+            tags = row.get("Kurdish Tags", "")
+            colors = row.get("Kurdish Color Tags", "")
+            materials = row.get("Kurdish Material Tags", "")
+        else:
+            tags = row.get("Arabic Tags", "")
+            colors = row.get("Arabic Colors Tags", "")
+            materials = row.get("Arabic Material Tags", "")
+
+        html = f"""
+        <div class="card" id="{key}">
+        """
+
+        if is_youtube(row.get("URL","")):
+            html += f'<iframe width="100%" height="200" src="{row["URL"]}" frameborder="0" allowfullscreen></iframe>'
+        elif is_image(row.get("URL","")):
+            html += f'<img src="{row["URL"]}" loading="lazy">'
+        else:
+            html += "<div style='padding:1rem'>Unsupported media</div>"
+
+        html += f"""
+            <div class="card-content">
+                {tags}<br>{colors}<br>{materials}
+            </div>
+        </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
