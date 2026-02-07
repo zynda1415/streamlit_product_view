@@ -24,13 +24,13 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
 
         # Use the new headers
         if language == "Kurdish":
-            tags = row.get("بابەتی", "")
-            colors = row.get("ڕەنگی", "")
-            materials = row.get("پێکهاتەی", "")
+            بابەتی = row.get("بابەتی", "")
+            ڕەنگی = row.get("ڕەنگی", "")
+            پێکهاتەی = row.get("پێکهاتەی", "")
         else:
-            tags = row.get("عنصر", "")
-            colors = row.get("الالوان", "")
-            materials = row.get("مكون من", "")
+            عنصر = row.get("عنصر", "")
+            الالوان = row.get("الالوان", "")
+            مكون من = row.get("مكون من", "")
 
         url = row.get("URL", "")
 
