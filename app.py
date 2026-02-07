@@ -1,52 +1,47 @@
 import streamlit as st
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
+from settings import load_data, sidebar_logo_and_language
+from display import show_logo, display_products
 
-from settings import load_data, admin_login, admin_settings
-from display import show_header, show_products
-
-# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="Asankar Products",
+    page_title="Product Viewer",
     layout="wide"
 )
 
-# ---------------- LOAD APP DATA ----------------
+# ---------------- MOBILE DETECTION ----------------
+st.markdown("""
+<style>
+@media (max-width: 768px) {
+    .block-container {
+        padding: 1rem;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- LOAD DATA ----------------
 data = load_data()
 
 # ---------------- SIDEBAR ----------------
-is_admin = admin_login()
-
-if is_admin:
-    admin_settings(data)
+logo_url, language = sidebar_logo_and_language(data)
 
 # ---------------- HEADER ----------------
-show_header(data)
+show_logo(logo_url)
 
-# ---------------- GOOGLE SHEETS ----------------
-scope = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
+st.markdown("---")
+
+# ---------------- CONTENT ----------------
+st.subheader("📦 Products")
+
+# Example placeholder (replace with Google Sheet data)
+products = [
+    {
+        "title": "Solar Panel Cleaning",
+        "media": "https://youtu.be/EIscMS9KW8k"
+    },
+    {
+        "title": "Before / After",
+        "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"
+    }
 ]
 
-credentials = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=scope
-)
-
-gc = gspread.authorize(credentials)
-
-SHEET_NAME = "asankar_product_images"
-
-try:
-    sh = gc.open(SHEET_NAME)
-    ws = sh.sheet1
-    df = pd.DataFrame(ws.get_all_records())
-except Exception as e:
-    st.error("❌ Failed to load Google Sheet")
-    st.code(str(e))
-    st.stop()
-
-# ---------------- SHOW PRODUCTS ----------------
-show_products(df, data)
+display_products(products)
