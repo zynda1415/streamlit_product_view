@@ -1,80 +1,64 @@
 import streamlit as st
-from PIL import Image
-import os
+import uuid
 
-FALLBACK_LOGO = "fallback_logo.png"
+def masonry_css(columns: int):
+    return f"""
+    <style>
+    .masonry {{
+        column-count: {columns};
+        column-gap: 1rem;
+    }}
+    @media (max-width: 768px) {{
+        .masonry {{
+            column-count: 2;
+        }}
+    }}
+    @media (max-width: 480px) {{
+        .masonry {{
+            column-count: 1;
+        }}
+    }}
+    .card {{
+        break-inside: avoid;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: white;
+    }}
+    .card img {{
+        width: 100%;
+        display: block;
+    }}
+    .card-content {{
+        padding: 0.5rem 0.75rem;
+        font-size: 14px;
+    }}
+    </style>
+    """
 
-# ---------- LOGO ----------
-def show_logo(in_sidebar=False):
-    if os.path.exists(FALLBACK_LOGO):
-        img = Image.open(FALLBACK_LOGO)
-        if in_sidebar:
-            st.sidebar.image(img, use_container_width=True)
-        else:
-            st.image(img, use_container_width=True)
+def render_products(df, language, columns):
+    st.markdown(masonry_css(columns), unsafe_allow_html=True)
+    st.markdown('<div class="masonry">', unsafe_allow_html=True)
 
-# ---------- MEDIA HELPERS ----------
-def is_youtube(url: str) -> bool:
-    return "youtube.com" in url or "youtu.be" in url
+    for _, row in df.iterrows():
+        key = str(uuid.uuid4())
 
-def is_image(url: str) -> bool:
-    return any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"])
+        title = row["Title KU"] if language == "ku" else row["Title AR"]
+        tags = (
+            row["Kurdish Tags"] if language == "ku"
+            else row["Arabic Tags"]
+        )
 
-# ---------- MASONRY GRID ----------
-def masonry_grid(df, columns, visible_count, language):
-    if df.empty:
-        st.info("No products to display")
-        return
+        html = f"""
+        <div class="card" id="{key}">
+            <img src="{row['Image URL']}" loading="lazy">
+            <div class="card-content">
+                <b>{title}</b><br>
+                <small>{tags}</small>
+            </div>
+        </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
 
-    cols = st.columns(columns, gap="medium")
-
-    for i in range(min(len(df), visible_count)):
-        col = cols[i % columns]
-        row = df.iloc[i]
-        url = row["URL"]
-
-        with col:
-            st.markdown(
-                """
-                <div style="
-                    border-radius:12px;
-                    overflow:hidden;
-                    box-shadow:0 4px 12px rgba(0,0,0,0.08);
-                    margin-bottom:1rem;
-                ">
-                """,
-                unsafe_allow_html=True,
-            )
-
-            if is_youtube(url):
-                st.video(url)
-            elif is_image(url):
-                st.image(url, use_container_width=True)
-            else:
-                st.warning("Unsupported media")
-
-            # ---------- TAG DISPLAY ----------
-            if language == "Kurdish":
-                tags = [
-                    row.get("Kurdish Tags", ""),
-                    row.get("Kurdish Color Tags", ""),
-                    row.get("Kurdish Material Tags", "")
-                ]
-            else:
-                tags = [
-                    row.get("Arabic Tags", ""),
-                    row.get("Arabic Colors Tags", ""),
-                    row.get("Arabic Material Tags", "")
-                ]
-
-            tags = [t for t in tags if t]
-
-            if tags:
-                st.markdown(
-                    "<div style='padding:0.5rem;font-size:0.8rem;color:#444'>"
-                    + "<br>".join(tags)
-                    + "</div>",
-                    unsafe_allow_html=True,
-                )
-
-            st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
