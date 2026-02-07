@@ -1,6 +1,7 @@
 import streamlit as st
 import re
 from urllib.parse import urlparse
+from settings import increment_stat, get_product_stats
 
 FALLBACK_LOGO = "fallback_logo.png"
 
@@ -44,6 +45,7 @@ def is_valid_url(url: str) -> bool:
 def render_product_card(row, idx, language="Kurdish"):
     """
     Render a single product card with media, details, and interaction buttons
+    Tracks all user interactions
     """
     # Get language-specific labels
     if language == "Kurdish":
@@ -60,6 +62,9 @@ def render_product_card(row, idx, language="Kurdish"):
     colors = row.get(color_label, "N/A")
     materials = row.get(material_label, "N/A")
     url = row.get("URL", "")
+    
+    # Get product stats
+    product_stats = get_product_stats(idx)
     
     # Card container with styling
     with st.container():
@@ -111,6 +116,19 @@ def render_product_card(row, idx, language="Kurdish"):
         </div>
         """, unsafe_allow_html=True)
         
+        # Product stats badge (small display)
+        if any(product_stats.values()):
+            stats_text = []
+            if product_stats.get("likes", 0) > 0:
+                stats_text.append(f"❤️ {product_stats['likes']}")
+            if product_stats.get("views", 0) > 0:
+                stats_text.append(f"👁️ {product_stats['views']}")
+            if product_stats.get("link_visits", 0) > 0:
+                stats_text.append(f"🔗 {product_stats['link_visits']}")
+            
+            if stats_text:
+                st.caption(" • ".join(stats_text))
+        
         # Action buttons
         col1, col2, col3 = st.columns(3)
         
@@ -123,18 +141,40 @@ def render_product_card(row, idx, language="Kurdish"):
                     st.session_state.favorites.remove(idx)
                 else:
                     st.session_state.favorites.add(idx)
+                    # Track like
+                    increment_stat("total_likes", product_id=idx)
                 st.rerun()
         
         with col2:
             # View details button
             if st.button("👁️", key=f"view_{idx}", use_container_width=True, help="View details"):
                 st.session_state.selected_product = row
+                st.session_state.selected_product_id = idx
+                # Track view
+                increment_stat("total_views", product_id=idx)
+                # Track click
+                increment_stat("total_clicks", product_id=idx)
                 st.rerun()
         
         with col3:
             # Share/Link button
             if url and is_valid_url(url):
-                st.link_button("🔗", url, use_container_width=True, help="Open link")
+                # Create a unique key for tracking link visits
+                link_key = f"link_{idx}"
+                
+                # Custom button with tracking
+                if st.button("🔗", key=link_key, use_container_width=True, help="Open link"):
+                    # Track link visit
+                    increment_stat("total_link_visits", product_id=idx)
+                    # Open link in new tab (using markdown/html)
+                    st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
+                    st.success("Opening link...")
+                    
+                # Alternative: Show link button that opens in new tab
+                st.markdown(
+                    f'<a href="{url}" target="_blank" style="display:none" id="link_{idx}_anchor"></a>',
+                    unsafe_allow_html=True
+                )
             else:
                 st.button("🔗", key=f"link_{idx}", disabled=True, use_container_width=True)
 
@@ -166,6 +206,7 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
 def show_product_modal(product, language="Kurdish"):
     """
     Display detailed product information in a modal dialog
+    Tracks views when opened
     """
     # Get language-specific labels
     if language == "Kurdish":
@@ -182,6 +223,13 @@ def show_product_modal(product, language="Kurdish"):
     colors = product.get(color_label, "N/A")
     materials = product.get(material_label, "N/A")
     url = product.get("URL", "")
+    
+    # Get product stats if we have the ID
+    if "selected_product_id" in st.session_state:
+        product_id = st.session_state.selected_product_id
+        product_stats = get_product_stats(product_id)
+    else:
+        product_stats = {"likes": 0, "views": 0, "clicks": 0, "link_visits": 0}
     
     # Display media
     col1, col2 = st.columns([2, 1])
@@ -205,8 +253,24 @@ def show_product_modal(product, language="Kurdish"):
         st.markdown(f"**{color_label}:** {colors}")
         st.markdown(f"**{material_label}:** {materials}")
         
+        # Product statistics
+        st.markdown("---")
+        st.markdown("### 📊 Statistics")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Likes", product_stats.get("likes", 0))
+            st.metric("Views", product_stats.get("views", 0))
+        with col_b:
+            st.metric("Clicks", product_stats.get("clicks", 0))
+            st.metric("Link Visits", product_stats.get("link_visits", 0))
+        
         if url and is_valid_url(url):
-            st.link_button("🔗 Open Link", url, use_container_width=True)
+            st.markdown("---")
+            if st.button("🔗 Open Link", use_container_width=True):
+                # Track link visit from modal
+                if "selected_product_id" in st.session_state:
+                    increment_stat("total_link_visits", product_id=st.session_state.selected_product_id)
+                st.markdown(f'<a href="{url}" target="_blank">Opening link...</a>', unsafe_allow_html=True)
     
     # Additional info if available
     st.markdown("---")
@@ -227,6 +291,8 @@ def show_product_modal(product, language="Kurdish"):
     # Close button
     if st.button("✖️ Close", use_container_width=True):
         st.session_state.selected_product = None
+        if "selected_product_id" in st.session_state:
+            del st.session_state.selected_product_id
         st.rerun()
 
 # ----------------- Favorites View -----------------
