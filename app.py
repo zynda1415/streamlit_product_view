@@ -302,26 +302,13 @@ if tag_search or selected_tags or selected_colors or selected_materials:
     st.sidebar.metric("Filtered Products", filtered_products)
 st.sidebar.metric("Favorites", len(st.session_state.favorites))
 
-# Analytics metrics in expander
+# Analytics metrics in expander (Reset button removed)
 with st.sidebar.expander("📊 Analytics"):
     st.metric("Total Likes", total_likes)
     st.metric("Total Views", total_views)
     st.metric("Total Clicks", total_clicks)
     st.metric("Link Visits", total_link_visits)
     st.metric("Searches", total_searches)
-    
-    if st.button("🔄 Reset Analytics", use_container_width=True):
-        st.session_state.analytics = {
-            "total_likes": 0,
-            "total_views": 0,
-            "total_clicks": 0,
-            "total_link_visits": 0,
-            "total_searches": 0,
-            "product_stats": {}
-        }
-        save_analytics(st.session_state.analytics)
-        st.success("Analytics reset!")
-        st.rerun()
 
 # Reset filters button
 if st.sidebar.button("🔄 Reset All Filters", use_container_width=True):
