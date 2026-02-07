@@ -28,8 +28,9 @@ def save_data(data):
 def sidebar_logo_and_language(data):
     st.sidebar.subheader("⚙️ Settings")
 
+    # OPTIONAL logo URL
     logo_url = st.sidebar.text_input(
-        "Paste Logo URL",
+        "Logo URL (optional)",
         value=data.get("logo_url", ""),
         key="logo_url_unique"
     )
