@@ -1,40 +1,32 @@
 import streamlit as st
-import os
 
-def add_rotated_background_logo(
-    logo_path="background_logo.png",
-    rotation=-30,
-    opacity=0.05,
-    size="200px"
-):
+def add_rotated_background_logo(logo_path="background_logo.png", rotation=-30, opacity=0.05, size=300):
     """
-    Safely adds a rotated logo in the background.
-    - rotation: degrees (negative = counter-clockwise)
-    - opacity: 0 to 1
-    - size: width of the logo
+    Adds a rotated logo as background using st.image + CSS.
+    Works on Streamlit Cloud and mobile.
     """
-    if not os.path.exists(logo_path):
-        st.warning(f"Background logo not found: {logo_path}")
-        return
-
-    abs_path = os.path.abspath(logo_path)
-    st.markdown(f"""
-    <style>
-    .rotated-logo {{
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        width: {size};
-        height: auto;
-        transform: translate(-50%, -50%) rotate({rotation}deg);
-        opacity: {opacity};
-        z-index: 0;
-        pointer-events: none;
-    }}
-    .stApp {{
-        position: relative;
-        z-index: 1;
-    }}
-    </style>
-    <img src="file://{abs_path}" class="rotated-logo">
-    """, unsafe_allow_html=True)
+    try:
+        st.image(
+            logo_path,
+            width=size,
+            use_column_width=False,
+            output_format="auto",
+        )
+        st.markdown(f"""
+        <style>
+        div[data-testid="stImage"] {{
+            position: fixed !important;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate({rotation}deg);
+            opacity: {opacity};
+            z-index: 0;
+            pointer-events: none;
+        }}
+        .stApp > div:first-child {{
+            z-index: 1;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+    except Exception as e:
+        st.warning(f"Failed to load background logo: {e}")
