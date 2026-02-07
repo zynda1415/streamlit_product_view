@@ -5,15 +5,6 @@ from rotlogo import add_rotated_background_logo
 import pandas as pd
 import base64
 
-# Helper function for icon display
-def get_base64_image(image_path):
-    """Convert image to base64 for inline display"""
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except:
-        return ""
-
 # ----------------- Page config -----------------
 st.set_page_config(
     page_title="Asankar Products",
@@ -32,8 +23,21 @@ st.markdown("""
         .block-container { 
             padding: 1rem !important; 
         }
+        /* Keep buttons in one row on mobile */
         .stButton > button {
-            width: 100%;
+            padding: 0.4rem 0.5rem !important;
+            font-size: 1.2rem !important;
+        }
+        /* Ensure 3-column layout stays on mobile */
+        [data-testid="column"] {
+            min-width: 30% !important;
+        }
+        /* Fix product card stats to be inline */
+        .product-stats-inline {
+            display: flex !important;
+            gap: 0.5rem !important;
+            justify-content: center !important;
+            flex-wrap: nowrap !important;
         }
     }
     
@@ -111,26 +115,34 @@ st.markdown("""
         animation: heartBeat 0.5s ease;
     }
     
-    /* View mode icon buttons */
-    div[data-testid="column"] button {
-        background: transparent !important;
-        border: 2px solid #e0e0e0 !important;
-        border-radius: 8px !important;
-        padding: 8px !important;
-        min-height: 50px !important;
-        transition: all 0.3s ease !important;
+    /* Column selector icons */
+    .column-icon {
+        display: inline-block;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 6px;
+        margin: 2px;
     }
     
-    div[data-testid="column"] button:hover {
-        border-color: #4CAF50 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2) !important;
+    .column-icon:hover {
+        background-color: #e8f5e9;
+        transform: scale(1.1);
     }
     
-    /* Active state for selected view mode */
-    .view-mode-active {
-        border-color: #4CAF50 !important;
-        background: rgba(76, 175, 80, 0.1) !important;
+    .column-icon.active {
+        background-color: #4CAF50;
+        color: white;
+    }
+    
+    /* Product stats inline display */
+    .product-stats-inline {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -150,6 +162,9 @@ if "sort_option" not in st.session_state:
 
 if "filter_tags" not in st.session_state:
     st.session_state.filter_tags = []
+
+if "columns_count" not in st.session_state:
+    st.session_state.columns_count = 2
 
 # Initialize analytics in session state
 if "analytics_loaded" not in st.session_state:
@@ -171,67 +186,52 @@ except Exception as e:
 # ----------------- Sidebar -----------------
 language = sidebar_controls()
 
-# Initialize columns_count in session state
-if "columns_count" not in st.session_state:
-    st.session_state.columns_count = 2
+# ----------------- Column Layout Selector with Icons -----------------
+st.sidebar.markdown("### 📊 View Layout")
 
-# View mode selector with icons
-st.sidebar.markdown("### 📊 View Mode")
-
-# View mode configuration
-view_modes = {
-    "List View": {"icon": "icons/list-view.png", "columns": 1},
-    "Single": {"icon": "icons/single-view.png", "columns": 1},
-    "Grid 2×2": {"icon": "icons/grid-2.png", "columns": 2},
-    "Grid 3×3": {"icon": "icons/grid-3.png", "columns": 3}
+# Create column layout icons
+col_icons = {
+    1: "view_icons-03.png",  # Single column (list view)
+    2: "view_icons-01.png",  # 2x2 grid
+    3: "view_icons-04.png",  # 3x3 grid
+    4: "view_icons-01.png",  # Use 2x2 for 4 columns
+    5: "view_icons-03.png",  # Use list for 5 columns
+    6: "view_icons-04.png",  # Use 3x3 for 6 columns
+    7: "view_icons-03.png",  # Use list for 7 columns
 }
 
-# Create 4 columns for icons
-icon_cols = st.sidebar.columns(4)
+# Display column options using radio buttons with custom layout
+st.sidebar.markdown("**Columns:**")
 
-for idx, (mode_name, mode_data) in enumerate(view_modes.items()):
-    with icon_cols[idx]:
-        # Check if this is the active mode
-        is_active = st.session_state.columns_count == mode_data['columns']
-        
-        # Create clickable container
-        try:
-            # Read and encode icon
-            with open(mode_data['icon'], "rb") as img_file:
-                icon_b64 = base64.b64encode(img_file.read()).decode()
-            
-            # Create custom HTML button with icon
-            button_html = f"""
-            <div style="text-align: center; margin-bottom: 8px;">
-                <div style="
-                    border: 2px solid {'#4CAF50' if is_active else '#e0e0e0'};
-                    background: {'rgba(76, 175, 80, 0.1)' if is_active else 'transparent'};
-                    border-radius: 8px;
-                    padding: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    min-height: 50px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-                    <img src="data:image/png;base64,{icon_b64}" 
-                         style="width: 32px; height: 32px; opacity: {'1.0' if is_active else '0.5'};">
-                </div>
-            </div>
-            """
-            st.markdown(button_html, unsafe_allow_html=True)
-            
-            # Invisible button for functionality
-            if st.button("​", key=f"view_{idx}", help=mode_name, use_container_width=True):
-                st.session_state.columns_count = mode_data['columns']
-                st.rerun()
-                
-        except Exception as e:
-            # Fallback text button
-            if st.button(mode_name[:1], key=f"view_{idx}_fb", help=mode_name, use_container_width=True):
-                st.session_state.columns_count = mode_data['columns']
-                st.rerun()
+# Create a grid of column options
+col_row1 = st.sidebar.columns(4)
+col_row2 = st.sidebar.columns(3)
+
+for i in range(1, 8):
+    if i <= 4:
+        col = col_row1[i-1]
+    else:
+        col = col_row2[i-5]
+    
+    with col:
+        if st.button(
+            f"{i}",
+            key=f"col_{i}",
+            use_container_width=True,
+            type="primary" if st.session_state.columns_count == i else "secondary"
+        ):
+            st.session_state.columns_count = i
+            st.rerun()
+
+# Alternative: Traditional slider (commented out)
+# columns_count = st.sidebar.slider(
+#     "📱 Columns",
+#     min_value=1,
+#     max_value=7,
+#     value=st.session_state.columns_count,
+#     help="Adjust number of columns (1-7)"
+# )
+# st.session_state.columns_count = columns_count
 
 columns_count = st.session_state.columns_count
 
@@ -388,7 +388,7 @@ if tag_search or selected_tags or selected_colors or selected_materials:
     st.sidebar.metric("Filtered Products", filtered_products)
 st.sidebar.metric("Favorites", len(st.session_state.favorites))
 
-# Analytics metrics in expander (Reset button removed)
+# Analytics metrics in expander
 with st.sidebar.expander("📊 Analytics"):
     st.metric("Total Likes", total_likes)
     st.metric("Total Views", total_views)
@@ -402,10 +402,10 @@ if st.sidebar.button("🔄 Reset All Filters", use_container_width=True):
     st.rerun()
 
 # ----------------- Main content -----------------
-# Header with stats (removed "📦 Asankar Products" title)
+# Header with stats
 col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
-    st.markdown("")  # Empty space where title was
+    st.markdown("# 📦 Asankar Products")
 with col2:
     st.metric("Showing", min(st.session_state.visible_count, len(filtered_df)))
 with col3:
