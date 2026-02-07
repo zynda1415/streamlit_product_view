@@ -3,14 +3,12 @@ import json
 import os
 
 DATA_FILE = "app_data.json"
-ADMIN_PASSWORD = "1234"   # change later
 
 DEFAULT_DATA = {
     "logo_url": "",
     "language": "Kurdish"
 }
 
-# ---------- DATA ----------
 def load_data():
     if not os.path.exists(DATA_FILE):
         save_data(DEFAULT_DATA)
@@ -27,43 +25,25 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# ---------- ADMIN ----------
-def admin_login():
-    if "admin_logged" not in st.session_state:
-        st.session_state.admin_logged = False
+def sidebar_logo_and_language(data):
+    st.sidebar.subheader("⚙️ Settings")
 
-    st.sidebar.markdown("### 🔐 Admin Login")
-
-    pwd = st.sidebar.text_input(
-        "Password",
-        type="password",
-        key="admin_pwd"
-    )
-
-    if pwd == ADMIN_PASSWORD:
-        st.session_state.admin_logged = True
-    elif pwd:
-        st.sidebar.error("Wrong password")
-
-    return st.session_state.admin_logged
-
-def admin_settings(data):
-    st.sidebar.markdown("### ⚙️ Admin Settings")
-
-    logo = st.sidebar.text_input(
-        "Logo URL",
+    logo_url = st.sidebar.text_input(
+        "Paste Logo URL",
         value=data.get("logo_url", ""),
-        key="logo_setting"
+        key="logo_url_unique"
     )
 
     language = st.sidebar.selectbox(
         "Language",
         ["Kurdish", "Arabic"],
         index=0 if data.get("language") == "Kurdish" else 1,
-        key="language_setting"
+        key="language_unique"
     )
 
-    if logo != data["logo_url"] or language != data["language"]:
-        data["logo_url"] = logo
+    if logo_url != data.get("logo_url") or language != data.get("language"):
+        data["logo_url"] = logo_url
         data["language"] = language
         save_data(data)
+
+    return logo_url, language
