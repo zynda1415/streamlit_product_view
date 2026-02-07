@@ -17,7 +17,7 @@ def load_data():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except json.JSONDecodeError:
+    except Exception:
         save_data(DEFAULT_DATA)
         return DEFAULT_DATA
 
@@ -26,25 +26,23 @@ def save_data(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def sidebar_logo_and_language(data):
-    st.sidebar.header("Brand")
+    st.sidebar.subheader("Brand")
 
     logo_url = st.sidebar.text_input(
         "Logo URL",
         value=data.get("logo_url", ""),
-        placeholder="https://example.com/logo.png"
+        key="logo_url_input"
     )
-
-    if logo_url != data.get("logo_url"):
-        data["logo_url"] = logo_url
-        save_data(data)
 
     language = st.sidebar.selectbox(
         "Language",
         ["Kurdish", "Arabic"],
-        index=0 if data.get("language") == "Kurdish" else 1
+        index=0 if data.get("language") == "Kurdish" else 1,
+        key="language_select"
     )
 
-    if language != data.get("language"):
+    if logo_url != data.get("logo_url") or language != data.get("language"):
+        data["logo_url"] = logo_url
         data["language"] = language
         save_data(data)
 
