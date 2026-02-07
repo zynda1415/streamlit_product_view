@@ -2,6 +2,14 @@ import streamlit as st
 from settings import load_google_sheet, sidebar_controls
 from display import display_products
 
+# Add this near the top of app.py (after page config)
+add_rotated_background_logo(
+    logo_path="background_logo.png",
+    rotation=-25,
+    opacity=0.05,
+    size="300px"
+)
+
 # ----------------- Page config -----------------
 st.set_page_config(
     page_title="Asankar Products",
