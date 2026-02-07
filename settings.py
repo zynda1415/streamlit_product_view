@@ -21,7 +21,7 @@ def save_app_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # ---------- Google Sheet ----------
-@st.cache_data(ttl=3600)  # auto refresh every hour
+@st.cache_data(ttl=5)  # auto refresh every hour
 def load_google_sheet():
     """Load Google Sheet as a Pandas DataFrame"""
     scopes = [
