@@ -22,14 +22,15 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
     for idx, row in df.iterrows():
         col = cols[idx % columns_count]
 
+        # Use the new headers
         if language == "Kurdish":
-            tags = row.get("Kurdish Tags", "")
-            colors = row.get("Kurdish Color Tags", "")
-            materials = row.get("Kurdish Material Tags", "")
+            tags = row.get("بابەتی", "")
+            colors = row.get("ڕەنگی", "")
+            materials = row.get("پێکهاتەی", "")
         else:
-            tags = row.get("Arabic Tags", "")
-            colors = row.get("Arabic Colors Tags", "")
-            materials = row.get("Arabic Material Tags", "")
+            tags = row.get("عنصر", "")
+            colors = row.get("الالوان", "")
+            materials = row.get("مكون من", "")
 
         url = row.get("URL", "")
 
