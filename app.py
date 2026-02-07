@@ -1,5 +1,5 @@
 import streamlit as st
-from settings import load_google_sheet, sidebar_controls
+from settings import load_google_sheet, sidebar_controls, load_analytics, save_analytics, increment_stat
 from display import display_products, show_product_modal
 from rotlogo import add_rotated_background_logo
 import pandas as pd
@@ -72,6 +72,34 @@ st.markdown("""
     .stMarkdown {
         margin-bottom: 1rem;
     }
+    
+    /* Fade-in animation for products */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .element-container {
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    /* Heart animation */
+    @keyframes heartBeat {
+        0%, 100% { transform: scale(1); }
+        25% { transform: scale(1.2); }
+        50% { transform: scale(1.1); }
+        75% { transform: scale(1.15); }
+    }
+    
+    .favorite-active {
+        animation: heartBeat 0.5s ease;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -90,6 +118,11 @@ if "sort_option" not in st.session_state:
 
 if "filter_tags" not in st.session_state:
     st.session_state.filter_tags = []
+
+# Initialize analytics in session state
+if "analytics_loaded" not in st.session_state:
+    st.session_state.analytics = load_analytics()
+    st.session_state.analytics_loaded = True
 
 # ----------------- Add rotated background logo -----------------
 try:
@@ -220,6 +253,8 @@ if tag_search:
         axis=1
     )
     filtered_df = filtered_df[mask]
+    # Track search
+    increment_stat("total_searches")
 
 # Tag filter
 if selected_tags and tag_col in filtered_df.columns:
@@ -252,12 +287,41 @@ elif sort_option == "oldest":
 total_products = len(df)
 filtered_products = len(filtered_df)
 
+# Get analytics stats
+analytics = st.session_state.analytics
+total_likes = analytics.get("total_likes", 0)
+total_views = analytics.get("total_views", 0)
+total_clicks = analytics.get("total_clicks", 0)
+total_link_visits = analytics.get("total_link_visits", 0)
+total_searches = analytics.get("total_searches", 0)
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📈 Statistics")
 st.sidebar.metric("Total Products", total_products)
 if tag_search or selected_tags or selected_colors or selected_materials:
     st.sidebar.metric("Filtered Products", filtered_products)
 st.sidebar.metric("Favorites", len(st.session_state.favorites))
+
+# Analytics metrics in expander
+with st.sidebar.expander("📊 Analytics"):
+    st.metric("Total Likes", total_likes)
+    st.metric("Total Views", total_views)
+    st.metric("Total Clicks", total_clicks)
+    st.metric("Link Visits", total_link_visits)
+    st.metric("Searches", total_searches)
+    
+    if st.button("🔄 Reset Analytics", use_container_width=True):
+        st.session_state.analytics = {
+            "total_likes": 0,
+            "total_views": 0,
+            "total_clicks": 0,
+            "total_link_visits": 0,
+            "total_searches": 0,
+            "product_stats": {}
+        }
+        save_analytics(st.session_state.analytics)
+        st.success("Analytics reset!")
+        st.rerun()
 
 # Reset filters button
 if st.sidebar.button("🔄 Reset All Filters", use_container_width=True):
@@ -309,8 +373,13 @@ if st.session_state.selected_product is not None:
 
 # ----------------- Footer -----------------
 st.markdown("---")
-st.markdown("""
+st.markdown(f"""
 <div style='text-align: center; color: #666; padding: 2rem 0;'>
     <p>Made with ❤️ by Asankar | Powered by Streamlit</p>
+    <p style='font-size: 0.8rem;'>
+        👁️ {total_views:,} views | 
+        ❤️ {total_likes:,} likes | 
+        🔗 {total_link_visits:,} link visits
+    </p>
 </div>
 """, unsafe_allow_html=True)
