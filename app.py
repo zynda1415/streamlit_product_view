@@ -1,9 +1,8 @@
 import streamlit as st
-from settings import load_google_sheet, sidebar_controls, load_analytics, save_analytics, increment_stat
+from settings import load_google_sheet, load_analytics, save_analytics, increment_stat, load_app_data, save_app_data
 from display import display_products, show_product_modal
 from rotlogo import add_rotated_background_logo
 import pandas as pd
-import base64
 
 # ----------------- Page config -----------------
 st.set_page_config(
@@ -15,44 +14,55 @@ st.set_page_config(
     }
 )
 
-# ----------------- Custom CSS for better UX -----------------
+# ----------------- Mobile-First CSS -----------------
 st.markdown("""
 <style>
-    /* Mobile optimizations */
+    /* CRITICAL: Force mobile buttons to stay horizontal */
     @media (max-width: 768px) {
+        /* Container adjustments */
         .block-container { 
-            padding: 1rem !important; 
+            padding: 0.5rem !important; 
         }
-        /* Keep buttons in one row on mobile */
-        .stButton > button {
-            padding: 0.4rem 0.5rem !important;
-            font-size: 1.2rem !important;
-        }
-        /* Ensure 3-column layout stays on mobile */
-        [data-testid="column"] {
+        
+        /* Force 3-column layout even on mobile */
+        div[data-testid="column"] {
+            flex: 1 1 33% !important;
+            max-width: 33.33% !important;
             min-width: 30% !important;
+            padding: 0 0.2rem !important;
         }
-        /* Fix product card stats to be inline */
-        .product-stats-inline {
+        
+        /* Button sizing for mobile */
+        .stButton > button {
+            width: 100% !important;
+            padding: 0.5rem 0.2rem !important;
+            font-size: 1.3rem !important;
+            min-width: 0 !important;
+            white-space: nowrap !important;
+        }
+        
+        /* Stats display - force horizontal */
+        .product-stats-mobile {
             display: flex !important;
-            gap: 0.5rem !important;
+            flex-direction: row !important;
             justify-content: center !important;
+            gap: 0.3rem !important;
             flex-wrap: nowrap !important;
+            white-space: nowrap !important;
         }
     }
     
-    /* Smooth scrolling */
+    /* Desktop and general styles */
     html {
         scroll-behavior: smooth;
     }
     
-    /* Better button styling */
     .stButton > button {
         background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
         color: white;
         border: none;
         border-radius: 8px;
-        padding: 0.5rem 2rem;
+        padding: 0.5rem 1rem;
         font-weight: 600;
         transition: all 0.3s ease;
     }
@@ -62,32 +72,26 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     }
     
-    /* Loading spinner */
     .stSpinner > div {
         border-color: #4CAF50 transparent transparent transparent;
     }
     
-    /* Card-like appearance for products */
     .element-container {
         transition: transform 0.2s ease;
     }
     
-    /* Search input styling */
     .stTextInput > div > div > input {
         border-radius: 8px;
     }
     
-    /* Sidebar styling */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     }
     
-    /* Better spacing */
     .stMarkdown {
         margin-bottom: 1rem;
     }
     
-    /* Fade-in animation for products */
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -103,7 +107,6 @@ st.markdown("""
         animation: fadeIn 0.5s ease-out;
     }
     
-    /* Heart animation */
     @keyframes heartBeat {
         0%, 100% { transform: scale(1); }
         25% { transform: scale(1.2); }
@@ -115,34 +118,9 @@ st.markdown("""
         animation: heartBeat 0.5s ease;
     }
     
-    /* Column selector icons */
-    .column-icon {
-        display: inline-block;
-        padding: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 6px;
-        margin: 2px;
-    }
-    
-    .column-icon:hover {
-        background-color: #e8f5e9;
-        transform: scale(1.1);
-    }
-    
-    .column-icon.active {
-        background-color: #4CAF50;
-        color: white;
-    }
-    
-    /* Product stats inline display */
-    .product-stats-inline {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        align-items: center;
-        margin: 0.5rem 0;
-        font-size: 0.85rem;
+    /* Column selector styling */
+    .column-selector-btn {
+        margin: 2px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -166,6 +144,10 @@ if "filter_tags" not in st.session_state:
 if "columns_count" not in st.session_state:
     st.session_state.columns_count = 2
 
+if "language" not in st.session_state:
+    app_data = load_app_data()
+    st.session_state.language = app_data.get("language", "Kurdish")
+
 # Initialize analytics in session state
 if "analytics_loaded" not in st.session_state:
     st.session_state.analytics = load_analytics()
@@ -180,30 +162,51 @@ try:
         size="300px"
     )
 except Exception as e:
-    # Silently fail if logo doesn't exist
     pass
 
 # ----------------- Sidebar -----------------
-language = sidebar_controls()
+# Logo
+try:
+    st.sidebar.image("fallback_logo.png", use_container_width=True)
+except Exception:
+    st.sidebar.markdown("## 🏢 Asankar")
 
-# ----------------- Column Layout Selector with Icons -----------------
-st.sidebar.markdown("### 📊 View Layout")
+st.sidebar.markdown("---")
 
-# Create column layout icons
-col_icons = {
-    1: "view_icons-03.png",  # Single column (list view)
-    2: "view_icons-01.png",  # 2x2 grid
-    3: "view_icons-04.png",  # 3x3 grid
-    4: "view_icons-01.png",  # Use 2x2 for 4 columns
-    5: "view_icons-03.png",  # Use list for 5 columns
-    6: "view_icons-04.png",  # Use 3x3 for 6 columns
-    7: "view_icons-03.png",  # Use list for 7 columns
+# Language selector IN SIDEBAR
+st.sidebar.markdown("### 🌐 Language / زمان")
+language_options = ["Kurdish", "Arabic"]
+language_labels = {
+    "Kurdish": "کوردی (Kurdish)",
+    "Arabic": "عربی (Arabic)"
 }
 
-# Display column options using radio buttons with custom layout
+selected_language = st.sidebar.radio(
+    "Choose language",
+    language_options,
+    index=language_options.index(st.session_state.language),
+    format_func=lambda x: language_labels[x],
+    label_visibility="collapsed",
+    help="Switch between Kurdish and Arabic"
+)
+
+# Save language preference if changed
+if selected_language != st.session_state.language:
+    st.session_state.language = selected_language
+    app_data = load_app_data()
+    app_data["language"] = selected_language
+    save_app_data(app_data)
+    st.rerun()
+
+language = st.session_state.language
+
+st.sidebar.markdown("---")
+
+# ----------------- Column Selector (1-7) -----------------
+st.sidebar.markdown("### 📊 View Layout")
 st.sidebar.markdown("**Columns:**")
 
-# Create a grid of column options
+# Create two rows of buttons
 col_row1 = st.sidebar.columns(4)
 col_row2 = st.sidebar.columns(3)
 
@@ -214,28 +217,21 @@ for i in range(1, 8):
         col = col_row2[i-5]
     
     with col:
+        button_type = "primary" if st.session_state.columns_count == i else "secondary"
         if st.button(
             f"{i}",
             key=f"col_{i}",
             use_container_width=True,
-            type="primary" if st.session_state.columns_count == i else "secondary"
+            type=button_type
         ):
             st.session_state.columns_count = i
             st.rerun()
 
-# Alternative: Traditional slider (commented out)
-# columns_count = st.sidebar.slider(
-#     "📱 Columns",
-#     min_value=1,
-#     max_value=7,
-#     value=st.session_state.columns_count,
-#     help="Adjust number of columns (1-7)"
-# )
-# st.session_state.columns_count = columns_count
-
 columns_count = st.session_state.columns_count
 
-# ----------------- Load Google Sheet with error handling -----------------
+st.sidebar.markdown("---")
+
+# ----------------- Load Google Sheet -----------------
 try:
     with st.spinner("🔄 Loading products..."):
         df = load_google_sheet()
@@ -260,7 +256,6 @@ tag_search = st.sidebar.text_input(
 )
 
 # Get unique tags, colors, and materials for filter options
-language_suffix = "Kurdish" if language == "Kurdish" else "Arabic"
 tag_col = "بابەتی" if language == "Kurdish" else "عنصر"
 color_col = "ڕەنگی" if language == "Kurdish" else "الالوان"
 material_col = "پێکهاتەی" if language == "Kurdish" else "مكون من"
@@ -339,7 +334,6 @@ if tag_search:
         axis=1
     )
     filtered_df = filtered_df[mask]
-    # Track search
     increment_stat("total_searches")
 
 # Tag filter
@@ -365,15 +359,14 @@ if selected_materials and material_col in filtered_df.columns:
 
 # ----------------- Apply sorting -----------------
 if sort_option == "newest":
-    filtered_df = filtered_df.iloc[::-1]  # Reverse order
+    filtered_df = filtered_df.iloc[::-1]
 elif sort_option == "oldest":
-    pass  # Keep original order
+    pass
 
 # ----------------- Statistics -----------------
 total_products = len(df)
 filtered_products = len(filtered_df)
 
-# Get analytics stats
 analytics = st.session_state.analytics
 total_likes = analytics.get("total_likes", 0)
 total_views = analytics.get("total_views", 0)
@@ -388,7 +381,7 @@ if tag_search or selected_tags or selected_colors or selected_materials:
     st.sidebar.metric("Filtered Products", filtered_products)
 st.sidebar.metric("Favorites", len(st.session_state.favorites))
 
-# Analytics metrics in expander
+# Analytics metrics
 with st.sidebar.expander("📊 Analytics"):
     st.metric("Total Likes", total_likes)
     st.metric("Total Views", total_views)
@@ -402,7 +395,6 @@ if st.sidebar.button("🔄 Reset All Filters", use_container_width=True):
     st.rerun()
 
 # ----------------- Main content -----------------
-# Header with stats
 col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
     st.markdown("# 📦 Asankar Products")
@@ -411,7 +403,6 @@ with col2:
 with col3:
     st.metric("Total", filtered_products)
 
-# Display message if filtered
 if filtered_products < total_products:
     st.info(f"🔍 Showing {filtered_products} of {total_products} products (filtered)")
 
@@ -426,7 +417,6 @@ else:
         visible_count=st.session_state.visible_count
     )
     
-    # Load more button with better UX
     if st.session_state.visible_count < len(filtered_df):
         remaining = len(filtered_df) - st.session_state.visible_count
         col1, col2, col3 = st.columns([1, 2, 1])
