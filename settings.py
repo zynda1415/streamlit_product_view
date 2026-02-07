@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import time
+import os
 
 APP_DATA_FILE = "app_data.json"
 
@@ -28,11 +29,19 @@ def load_app_data():
         return get_default_app_data()
 
 def get_default_app_data():
-    """Return default app settings"""
+    """Return default app settings with analytics"""
     return {
         "language": "Kurdish",
         "last_updated": datetime.now().isoformat(),
-        "theme": "light"
+        "theme": "light",
+        "analytics": {
+            "total_likes": 0,
+            "total_views": 0,
+            "total_clicks": 0,
+            "total_link_visits": 0,
+            "total_searches": 0,
+            "product_stats": {}
+        }
     }
 
 def save_app_data(data):
@@ -45,6 +54,109 @@ def save_app_data(data):
     except Exception as e:
         st.error(f"❌ Error saving settings: {e}")
         return False
+
+# ---------- Analytics Functions ----------
+def load_analytics():
+    """Load analytics data from app_data.json"""
+    app_data = load_app_data()
+    if "analytics" not in app_data:
+        app_data["analytics"] = {
+            "total_likes": 0,
+            "total_views": 0,
+            "total_clicks": 0,
+            "total_link_visits": 0,
+            "total_searches": 0,
+            "product_stats": {}
+        }
+        save_app_data(app_data)
+    return app_data["analytics"]
+
+def save_analytics(analytics_data):
+    """Save analytics data to app_data.json"""
+    app_data = load_app_data()
+    app_data["analytics"] = analytics_data
+    save_app_data(app_data)
+
+def increment_stat(stat_name, product_id=None):
+    """
+    Increment a statistics counter
+    
+    Args:
+        stat_name: Name of the stat (e.g., 'total_likes', 'total_views')
+        product_id: Optional product ID for product-specific stats
+    """
+    analytics = load_analytics()
+    
+    # Increment total stat
+    if stat_name in analytics:
+        analytics[stat_name] += 1
+    else:
+        analytics[stat_name] = 1
+    
+    # Track product-specific stats
+    if product_id is not None:
+        if "product_stats" not in analytics:
+            analytics["product_stats"] = {}
+        
+        product_id_str = str(product_id)
+        if product_id_str not in analytics["product_stats"]:
+            analytics["product_stats"][product_id_str] = {
+                "likes": 0,
+                "views": 0,
+                "clicks": 0,
+                "link_visits": 0
+            }
+        
+        # Map stat name to product stat
+        stat_mapping = {
+            "total_likes": "likes",
+            "total_views": "views",
+            "total_clicks": "clicks",
+            "total_link_visits": "link_visits"
+        }
+        
+        if stat_name in stat_mapping:
+            product_stat = stat_mapping[stat_name]
+            analytics["product_stats"][product_id_str][product_stat] += 1
+    
+    save_analytics(analytics)
+    
+    # Update session state
+    if "analytics" in st.session_state:
+        st.session_state.analytics = analytics
+
+def get_product_stats(product_id):
+    """Get statistics for a specific product"""
+    analytics = load_analytics()
+    product_stats = analytics.get("product_stats", {})
+    product_id_str = str(product_id)
+    
+    return product_stats.get(product_id_str, {
+        "likes": 0,
+        "views": 0,
+        "clicks": 0,
+        "link_visits": 0
+    })
+
+def get_top_products(stat_type="likes", limit=10):
+    """
+    Get top products by a specific statistic
+    
+    Args:
+        stat_type: Type of stat ('likes', 'views', 'clicks', 'link_visits')
+        limit: Number of top products to return
+    """
+    analytics = load_analytics()
+    product_stats = analytics.get("product_stats", {})
+    
+    # Sort products by stat
+    sorted_products = sorted(
+        product_stats.items(),
+        key=lambda x: x[1].get(stat_type, 0),
+        reverse=True
+    )
+    
+    return sorted_products[:limit]
 
 # ---------- Google Sheet with improved error handling ----------
 @st.cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
@@ -177,6 +289,18 @@ def sidebar_controls():
         # Refresh data button
         if st.button("🔄 Refresh Data", use_container_width=True):
             refresh_data()
+        
+        # Export analytics
+        if st.button("📊 Export Analytics", use_container_width=True):
+            analytics = load_analytics()
+            analytics_json = json.dumps(analytics, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="⬇️ Download Analytics JSON",
+                data=analytics_json,
+                file_name=f"analytics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
         
         # Cache info
         st.caption("Data is cached for 1 hour for better performance")
