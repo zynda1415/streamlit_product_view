@@ -46,6 +46,7 @@ def render_product_card(row, idx, language="Kurdish"):
     """
     Render a single product card with media, details, and interaction buttons
     Tracks all user interactions
+    Mobile-friendly with inline button layout
     """
     # Get language-specific labels
     if language == "Kurdish":
@@ -116,20 +117,34 @@ def render_product_card(row, idx, language="Kurdish"):
         </div>
         """, unsafe_allow_html=True)
         
-        # Product stats badge (small display)
+        # Product stats badge - INLINE LAYOUT (works on mobile and PC)
         if any(product_stats.values()):
-            stats_text = []
+            stats_parts = []
             if product_stats.get("likes", 0) > 0:
-                stats_text.append(f"❤️ {product_stats['likes']}")
+                stats_parts.append(f"❤️ {product_stats['likes']}")
             if product_stats.get("views", 0) > 0:
-                stats_text.append(f"👁️ {product_stats['views']}")
+                stats_parts.append(f"👁️ {product_stats['views']}")
             if product_stats.get("link_visits", 0) > 0:
-                stats_text.append(f"🔗 {product_stats['link_visits']}")
+                stats_parts.append(f"🔗 {product_stats['link_visits']}")
             
-            if stats_text:
-                st.caption(" • ".join(stats_text))
+            if stats_parts:
+                # Inline display using HTML for better mobile support
+                stats_html = " • ".join(stats_parts)
+                st.markdown(f"""
+                <div class="product-stats-inline" style="
+                    display: flex;
+                    gap: 0.5rem;
+                    justify-content: center;
+                    align-items: center;
+                    margin: 0.5rem 0;
+                    font-size: 0.85rem;
+                    flex-wrap: nowrap;
+                ">
+                    {stats_html}
+                </div>
+                """, unsafe_allow_html=True)
         
-        # Action buttons
+        # Action buttons - ALWAYS IN ONE ROW (mobile & desktop)
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -182,6 +197,7 @@ def render_product_card(row, idx, language="Kurdish"):
 def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
     """
     Display products in a responsive grid layout with error handling
+    Mobile-friendly: maintains grid on all screen sizes
     """
     if df is None or df.empty:
         st.info("📭 No products to display")
@@ -190,7 +206,7 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
     # Limit to visible count
     df_display = df.head(visible_count)
     
-    # Create columns
+    # Create columns - works on mobile and desktop
     cols = st.columns(columns_count)
     
     # Display products
@@ -253,7 +269,7 @@ def show_product_modal(product, language="Kurdish"):
         st.markdown(f"**{color_label}:** {colors}")
         st.markdown(f"**{material_label}:** {materials}")
         
-        # Product statistics
+        # Product statistics - INLINE on mobile
         st.markdown("---")
         st.markdown("### 📊 Statistics")
         col_a, col_b = st.columns(2)
