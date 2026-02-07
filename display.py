@@ -1,22 +1,36 @@
 import streamlit as st
 import uuid
+import os
+from PIL import Image
 
-def masonry_css(columns: int):
-    return f"""
+FALLBACK_LOGO = "fallback_logo.png"
+
+# ----------------- Helpers -----------------
+def is_youtube(url: str) -> bool:
+    return "youtube.com" in url or "youtu.be" in url
+
+def is_image(url: str) -> bool:
+    return any(url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"])
+
+# ----------------- Masonry Grid -----------------
+def masonry_grid(df, language="Kurdish", columns=3, visible_count=12):
+    """Display products in Pinterest-style masonry grid"""
+    if df.empty:
+        st.info("No products to display")
+        return
+
+    # CSS for masonry
+    st.markdown(f"""
     <style>
     .masonry {{
         column-count: {columns};
         column-gap: 1rem;
     }}
     @media (max-width: 768px) {{
-        .masonry {{
-            column-count: 2;
-        }}
+        .masonry {{ column-count: 2; }}
     }}
     @media (max-width: 480px) {{
-        .masonry {{
-            column-count: 1;
-        }}
+        .masonry {{ column-count: 1; }}
     }}
     .card {{
         break-inside: avoid;
@@ -26,39 +40,60 @@ def masonry_css(columns: int):
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         background: white;
     }}
-    .card img {{
+    .card img, .card iframe {{
         width: 100%;
         display: block;
     }}
     .card-content {{
         padding: 0.5rem 0.75rem;
         font-size: 14px;
+        color: #444;
     }}
     </style>
-    """
+    """, unsafe_allow_html=True)
 
-def render_products(df, language, columns):
-    st.markdown(masonry_css(columns), unsafe_allow_html=True)
     st.markdown('<div class="masonry">', unsafe_allow_html=True)
 
-    for _, row in df.iterrows():
+    for _, row in df.head(visible_count).iterrows():
         key = str(uuid.uuid4())
 
-        title = row["Title KU"] if language == "ku" else row["Title AR"]
-        tags = (
-            row["Kurdish Tags"] if language == "ku"
-            else row["Arabic Tags"]
-        )
+        # Select language-specific tags
+        if language == "Kurdish":
+            tags = row.get("Kurdish Tags", "")
+            colors = row.get("Kurdish Color Tags", "")
+            materials = row.get("Kurdish Material Tags", "")
+        else:
+            tags = row.get("Arabic Tags", "")
+            colors = row.get("Arabic Colors Tags", "")
+            materials = row.get("Arabic Material Tags", "")
 
-        html = f"""
-        <div class="card" id="{key}">
-            <img src="{row['Image URL']}" loading="lazy">
+        html = f'<div class="card" id="{key}">'
+
+        url = row.get("URL", "")
+
+        try:
+            if is_youtube(url):
+                # Convert YouTube link to embed URL
+                if "youtu.be" in url:
+                    video_id = url.split("/")[-1]
+                else:
+                    video_id = url.split("v=")[-1].split("&")[0]
+                embed_url = f"https://www.youtube.com/embed/{video_id}"
+                html += f'<iframe height="200" src="{embed_url}" frameborder="0" allowfullscreen></iframe>'
+            elif is_image(url):
+                html += f'<img src="{url}" loading="lazy">'
+            else:
+                html += "<div style='padding:1rem'>Unsupported media</div>"
+        except Exception:
+            html += "<div style='padding:1rem'>Error loading media</div>"
+
+        html += f"""
             <div class="card-content">
-                <b>{title}</b><br>
-                <small>{tags}</small>
+                {tags}<br>{colors}<br>{materials}
             </div>
         </div>
         """
+
         st.markdown(html, unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
