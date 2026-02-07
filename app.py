@@ -7,7 +7,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------------- MOBILE DETECTION ----------------
+# ---------------- MOBILE OPTIMIZATION ----------------
 st.markdown("""
 <style>
 @media (max-width: 768px) {
@@ -29,17 +29,17 @@ show_logo(logo_url)
 
 st.markdown("---")
 
-# ---------------- CONTENT ----------------
+# ---------------- PRODUCTS ----------------
 st.subheader("📦 Products")
 
-# Example placeholder (replace with Google Sheet data)
+# Example data (replace with Google Sheet)
 products = [
     {
         "title": "Solar Panel Cleaning",
         "media": "https://youtu.be/EIscMS9KW8k"
     },
     {
-        "title": "Before / After",
+        "title": "Before & After",
         "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"
     }
 ]
