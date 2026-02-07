@@ -19,18 +19,28 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
     df = df.head(visible_count)
     cols = st.columns(columns_count)
 
+    # Language-specific labels
+    if language == "Kurdish":
+        tag_label = "بابەتی"
+        color_label = "ڕەنگی"
+        material_label = "پێکهاتەی"
+        display_tag_text = "بابەتی"
+        display_color_text = "ڕەنگی"
+        display_material_text = "پێکهاتەی"
+    else:
+        tag_label = "عنصر"
+        color_label = "الالوان"
+        material_label = "مكون من"
+        display_tag_text = "عنصر"
+        display_color_text = "الالوان"
+        display_material_text = "مكون من"
+
     for idx, row in df.iterrows():
         col = cols[idx % columns_count]
 
-        # Use the new headers
-        if language == "Kurdish":
-            tags = row.get("بابەتی", "")
-            colors = row.get("ڕەنگی", "")
-            materials = row.get("پێکهاتەی", "")
-        else:
-            tags = row.get("عنصر", "")
-            colors = row.get("الالوان", "")
-            materials = row.get("مكون من", "")
+        tags = row.get(tag_label, "")
+        colors = row.get(color_label, "")
+        materials = row.get(material_label, "")
 
         url = row.get("URL", "")
 
@@ -50,4 +60,9 @@ def display_products(df, language="Kurdish", columns_count=3, visible_count=12):
             except Exception:
                 st.error("Error loading media")
 
-            st.caption(f"Tags: {tags}\nColors: {colors}\nMaterials: {materials}")
+            # Display localized labels
+            st.markdown(f"""
+            **{display_tag_text}:** {tags}  
+            **{display_color_text}:** {colors}  
+            **{display_material_text}:** {materials}
+            """)
