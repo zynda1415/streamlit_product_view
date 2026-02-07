@@ -1,7 +1,7 @@
 import streamlit as st
 import uuid
-import os
 from PIL import Image
+import os
 
 FALLBACK_LOGO = "fallback_logo.png"
 
@@ -19,12 +19,17 @@ def masonry_grid(df, language="Kurdish", columns=3, visible_count=12):
         st.info("No products to display")
         return
 
-    # CSS for masonry
+    columns = max(1, columns)
+
+    # CSS for masonry layout
     st.markdown(f"""
     <style>
     .masonry {{
         column-count: {columns};
         column-gap: 1rem;
+    }}
+    @media (max-width: 1024px) {{
+        .masonry {{ column-count: max(1, {columns}-1); }}
     }}
     @media (max-width: 768px) {{
         .masonry {{ column-count: 2; }}
@@ -57,7 +62,6 @@ def masonry_grid(df, language="Kurdish", columns=3, visible_count=12):
     for _, row in df.head(visible_count).iterrows():
         key = str(uuid.uuid4())
 
-        # Select language-specific tags
         if language == "Kurdish":
             tags = row.get("Kurdish Tags", "")
             colors = row.get("Kurdish Color Tags", "")
@@ -73,7 +77,6 @@ def masonry_grid(df, language="Kurdish", columns=3, visible_count=12):
 
         try:
             if is_youtube(url):
-                # Convert YouTube link to embed URL
                 if "youtu.be" in url:
                     video_id = url.split("/")[-1]
                 else:
