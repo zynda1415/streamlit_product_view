@@ -1,46 +1,55 @@
 import streamlit as st
 import pandas as pd
 
-# ---------------- PRODUCT DISPLAY ----------------
-def show_products(products, media_type="All", tag_search=""):
-    if not products:
+def convert_youtube_url(url):
+    if "youtu.be/" in url:
+        video_id = url.split("/")[-1].split("?")[0]
+        return f"https://www.youtube.com/watch?v={video_id}"
+    return url
+
+def get_columns():
+    if st.session_state.get("mobile_view", True):
+        return st.columns(1)
+    return st.columns(3)
+
+def show_products(records, media_type="All", search=""):
+    if not records:
         st.info("No products to display")
         return
 
-    df = pd.DataFrame(products)
-    filtered_df = df.copy()
+    df = pd.DataFrame(records)
 
-    if tag_search:
-        filtered_df = filtered_df[
-            filtered_df.apply(
-                lambda row: tag_search.lower() in " ".join(row.astype(str)).lower(),
-                axis=1
-            )
-        ]
+    if search:
+        df = df[df.apply(
+            lambda r: search.lower() in " ".join(r.astype(str)).lower(),
+            axis=1
+        )]
 
-    cols = st.columns(3)
-    for index, row in filtered_df.iterrows():
-        url = row["URL"]
-        url_lower = url.lower()
-        url_base = url_lower.split("?")[0]  # remove query parameters
+    cols = get_columns()
 
-        col = cols[index % 3]
+    for i, row in df.iterrows():
+        url = row.get("URL", "")
+        url_base = url.lower().split("?")[0]
 
+        col = cols[i % len(cols)]
         with col:
-            # Images
+
+            # IMAGE
             if url_base.endswith((".jpg", ".jpeg", ".png", ".webp")):
                 if media_type in ["All", "Images"]:
                     st.image(url, use_container_width=True)
 
-            # Videos
-            elif url_base.endswith((".mp4", ".mov", ".webm")) or "youtu.be" in url or "youtube.com/watch" in url:
+            # VIDEO
+            elif (
+                url_base.endswith((".mp4", ".mov", ".webm")) or
+                "youtube.com/watch" in url or
+                "youtu.be" in url
+            ):
                 if media_type in ["All", "Videos"]:
-                    st.video(url)
+                    st.video(convert_youtube_url(url))
 
             else:
-                st.warning(f"Unsupported file type: {url}")
+                st.warning("Unsupported media")
 
-            st.caption(
-                f"**Kurdish:** {row.get('Kurdish Tags', '')}  \n"
-                f"**Arabic:** {row.get('Arabic Tags', '')}"
-            )
+            st.caption(f"🟡 {row.get('Kurdish Tags','')}")
+            st.caption(f"🟢 {row.get('Arabic Tags','')}")
