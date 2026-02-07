@@ -21,7 +21,7 @@ def save_app_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # ---------- Google Sheet ----------
-@st.cache_data(ttl=3600)  # auto-refresh every hour
+@st.cache_data(ttl=3600)  # auto refresh every hour
 def load_google_sheet():
     """Load Google Sheet as a Pandas DataFrame"""
     scopes = [
@@ -34,7 +34,7 @@ def load_google_sheet():
     )
     client = gspread.authorize(creds)
 
-    # Replace with your actual Google Sheet ID in Streamlit secrets
+    # Google Sheet ID from Streamlit secrets
     sheet = client.open_by_key(st.secrets["google_sheet_id"]).sheet1
 
     df = pd.DataFrame(sheet.get_all_records())
