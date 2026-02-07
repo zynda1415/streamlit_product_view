@@ -9,9 +9,9 @@ st.set_page_config(
 )
 
 # ----------------- Sidebar -----------------
-language = sidebar_controls()  # returns "Kurdish" or "Arabic"
+language = sidebar_controls()
 
-# Columns selector for masonry
+# Columns selector for masonry layout
 columns = st.sidebar.slider(
     "View Columns",
     min_value=1,
@@ -45,7 +45,7 @@ masonry_grid(
 if st.session_state.visible_count < len(df):
     if st.button("⬇ Load more"):
         st.session_state.visible_count += 12
-        st.experimental_rerun()  # refresh to show more
+        st.experimental_rerun()
 
 # ----------------- Mobile adjustments -----------------
 st.markdown("""
