@@ -2,7 +2,41 @@ import streamlit as st
 from settings import load_google_sheet, sidebar_controls
 from display import display_products
 
-# Add this near the top of app.py (after page config)
+# ----------------- Page config -----------------
+st.set_page_config(
+    page_title="Asankar Products",
+    layout="wide"
+)
+
+# ----------------- Rotated background logo -----------------
+def add_rotated_background_logo(logo_path="background_logo.png", rotation=-30, opacity=0.05, size="200px"):
+    """
+    Adds a rotated logo in the background.
+    """
+    st.markdown(f"""
+    <style>
+    body {{
+        position: relative;
+    }}
+    .rotated-logo {{
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: {size};
+        height: auto;
+        transform: translate(-50%, -50%) rotate({rotation}deg);
+        opacity: {opacity};
+        z-index: 0;
+        pointer-events: none;
+    }}
+    .stApp {{
+        z-index: 1;
+    }}
+    </style>
+    <img src="{logo_path}" class="rotated-logo">
+    """, unsafe_allow_html=True)
+
+# Add the background logo
 add_rotated_background_logo(
     logo_path="background_logo.png",
     rotation=-25,
@@ -10,16 +44,9 @@ add_rotated_background_logo(
     size="300px"
 )
 
-# ----------------- Page config -----------------
-st.set_page_config(
-    page_title="Asankar Products",
-    layout="wide"
-)
-
 # ----------------- Sidebar -----------------
 language = sidebar_controls()
 
-# Columns selector
 columns_count = st.sidebar.slider(
     "View Columns",
     min_value=1,
@@ -27,7 +54,6 @@ columns_count = st.sidebar.slider(
     value=2
 )
 
-# Search filter
 tag_search = st.sidebar.text_input("Search tags")
 
 # ----------------- Load Google Sheet -----------------
@@ -37,7 +63,7 @@ df = load_google_sheet()
 if tag_search:
     df = df[df.apply(lambda r: tag_search.lower() in " ".join(r.astype(str)).lower(), axis=1)]
 
-# Lazy loading
+# ----------------- Lazy loading -----------------
 if "visible_count" not in st.session_state:
     st.session_state.visible_count = 12
 
