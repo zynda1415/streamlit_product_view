@@ -21,18 +21,22 @@ def show_logo(logo_url: str | None = None, in_sidebar=False):
     else:
         st.markdown("<h2 style='text-align:center'>ASANKAR</h2>", unsafe_allow_html=True)
 
+
 def is_youtube(url: str):
     return "youtube.com" in url or "youtu.be" in url
 
 def is_image(url: str):
     return any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"])
 
-# ---------------- ICON GRID ----------------
+# ---------------- PRODUCT DISPLAY ----------------
 def display_products(products, view: str = "medium"):
     """
-    Explorer-style display:
+    Explorer-style display with click-to-preview:
     extra_large / large / medium / small / list
     """
+    if "preview_url" not in st.session_state:
+        st.session_state.preview_url = None
+
     if not products:
         st.info("No products to display")
         return
@@ -72,6 +76,20 @@ def display_products(products, view: str = "medium"):
                 with col:
                     display_single_product(product, thumb_size=thumb_size)
 
+    # Show modal preview if clicked
+    if st.session_state.preview_url:
+        st.markdown("---")
+        st.subheader("🔍 Preview")
+        url = st.session_state.preview_url
+        if is_youtube(url):
+            st.video(url)
+        elif is_image(url):
+            st.image(url, use_container_width=True)
+        st.button("Close Preview", on_click=lambda: clear_preview())
+
+def clear_preview():
+    st.session_state.preview_url = None
+
 def display_single_product(product, thumb_size=200, full_width=False):
     """Display a single product as thumbnail + title"""
     title = product.get("title", "")
@@ -86,13 +104,13 @@ def display_single_product(product, thumb_size=200, full_width=False):
         else:
             st.warning("Unsupported media type")
     else:
-        # Explorer-style thumbnail
+        # Explorer-style thumbnail with clickable button
         if is_youtube(media):
-            # Embed video as small player
-            st.video(media)
+            st.video(media, start_time=0)
         elif is_image(media):
+            if st.button(f"🔍 {title}", key=media):
+                st.session_state.preview_url = media
             st.image(media, width=thumb_size)
         else:
             st.warning("Unsupported media type")
-
         st.markdown(f"<p style='text-align:center'>{title}</p>", unsafe_allow_html=True)
