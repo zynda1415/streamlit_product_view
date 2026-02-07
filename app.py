@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # ---------- AUTO REFRESH (1 HOUR) ----------
-st_autorefresh(interval=3600000, key="hourly_refresh")
+st_autorefresh(interval=300000, key="5 minitus_refresh")
 
 # ---------- SIDEBAR ----------
 sidebar_logo()
