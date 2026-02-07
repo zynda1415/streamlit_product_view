@@ -1,7 +1,6 @@
 import streamlit as st
 from PIL import Image
 import os
-import html
 
 FALLBACK_LOGO = "fallback_logo.png"
 
@@ -21,57 +20,61 @@ def is_youtube(url: str) -> bool:
 def is_image(url: str) -> bool:
     return any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"])
 
-# ---------- TRUE PINTEREST MASONRY ----------
-def masonry_grid(df, columns: int, visible_count: int):
-    st.markdown(f"""
-    <style>
-    .masonry {{
-        column-count: {columns};
-        column-gap: 1rem;
-    }}
-    .card {{
-        break-inside: avoid;
-        margin-bottom: 1rem;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #fff;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }}
-    .card img {{
-        width: 100%;
-        display: block;
-    }}
-    .card-title {{
-        padding: 0.5rem;
-        font-size: 0.85rem;
-        text-align: center;
-        color: #444;
-    }}
-    @media (max-width: 768px) {{
-        .masonry {{ column-count: 1; }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
+# ---------- MASONRY GRID ----------
+def masonry_grid(df, columns, visible_count, language):
+    if df.empty:
+        st.info("No products to display")
+        return
 
-    st.markdown("<div class='masonry'>", unsafe_allow_html=True)
+    cols = st.columns(columns, gap="medium")
 
     for i in range(min(len(df), visible_count)):
+        col = cols[i % columns]
         row = df.iloc[i]
         url = row["URL"]
-        title = html.escape(row.get("Title", ""))
 
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        with col:
+            st.markdown(
+                """
+                <div style="
+                    border-radius:12px;
+                    overflow:hidden;
+                    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+                    margin-bottom:1rem;
+                ">
+                """,
+                unsafe_allow_html=True,
+            )
 
-        if is_youtube(url):
-            st.video(url)
-        elif is_image(url):
-            st.image(url, use_container_width=True)
-        else:
-            st.markdown("<p style='padding:1rem'>Unsupported media</p>", unsafe_allow_html=True)
+            if is_youtube(url):
+                st.video(url)
+            elif is_image(url):
+                st.image(url, use_container_width=True)
+            else:
+                st.warning("Unsupported media")
 
-        if title:
-            st.markdown(f"<div class='card-title'>{title}</div>", unsafe_allow_html=True)
+            # ---------- TAG DISPLAY ----------
+            if language == "Kurdish":
+                tags = [
+                    row.get("Kurdish Tags", ""),
+                    row.get("Kurdish Color Tags", ""),
+                    row.get("Kurdish Material Tags", "")
+                ]
+            else:
+                tags = [
+                    row.get("Arabic Tags", ""),
+                    row.get("Arabic Colors Tags", ""),
+                    row.get("Arabic Material Tags", "")
+                ]
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            tags = [t for t in tags if t]
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            if tags:
+                st.markdown(
+                    "<div style='padding:0.5rem;font-size:0.8rem;color:#444'>"
+                    + "<br>".join(tags)
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
