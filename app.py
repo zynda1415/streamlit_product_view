@@ -1,51 +1,49 @@
 import streamlit as st
 from settings import load_google_sheet, sidebar_controls
-from display import render_products
+from display import masonry_grid
 
 st.set_page_config(
-    page_title="Product Viewer",
+    page_title="Asankar Products",
     layout="wide"
 )
 
+# ---------- Sidebar ----------
 language = sidebar_controls()
 
-df = load_google_sheet()
+columns = st.sidebar.slider("View Columns", min_value=1, max_value=4, value=2)
 
 # ---------- Filters ----------
-if language == "ku":
-    tag_col = "Kurdish Tags"
-    color_col = "Kurdish Color Tags"
-    material_col = "Kurdish Material Tags"
-else:
-    tag_col = "Arabic Tags"
-    color_col = "Arabic Colors Tags"
-    material_col = "Arabic Material Tags"
+tag_search = st.sidebar.text_input("Search tags")
 
-with st.sidebar:
-    tag_filter = st.multiselect("Tags", sorted(df[tag_col].dropna().unique()))
-    color_filter = st.multiselect("Colors", sorted(df[color_col].dropna().unique()))
-    material_filter = st.multiselect("Material", sorted(df[material_col].dropna().unique()))
+# ---------- Load Google Sheet ----------
+df = load_google_sheet()
 
-    view = st.selectbox(
-        "View",
-        ["Extra Large", "Large", "Medium", "Small"]
-    )
+# ---------- Filter by tag_search ----------
+if tag_search:
+    df = df[df.apply(lambda r: tag_search.lower() in " ".join(r.astype(str)).lower(), axis=1)]
 
-# ---------- View → columns ----------
-view_map = {
-    "Extra Large": 2,
-    "Large": 3,
-    "Medium": 4,
-    "Small": 6
-}
-columns = view_map[view]
+# ---------- Lazy loading ----------
+if "visible_count" not in st.session_state:
+    st.session_state.visible_count = 12
 
-# ---------- Apply filters ----------
-if tag_filter:
-    df = df[df[tag_col].isin(tag_filter)]
-if color_filter:
-    df = df[df[color_col].isin(color_filter)]
-if material_filter:
-    df = df[df[material_col].isin(material_filter)]
+st.markdown("## 📦 Products")
+masonry_grid(
+    df,
+    language=language,
+    columns=columns,
+    visible_count=st.session_state.visible_count
+)
 
-render_products(df, language, columns)
+if st.session_state.visible_count < len(df):
+    if st.button("⬇ Load more"):
+        st.session_state.visible_count += 12
+        st.rerun()
+
+# ---------- Mobile adjustments ----------
+st.markdown("""
+<style>
+@media (max-width: 768px) {{
+    .block-container {{ padding: 1rem; }}
+}}
+</style>
+""", unsafe_allow_html=True)
