@@ -22,11 +22,13 @@ st.markdown("""
 sidebar_logo()
 
 # ---------------- VIEW SELECTOR ----------------
-st.sidebar.subheader("View Options")
-view_option = st.sidebar.radio(
-    "Select view",
-    options=["extra_large", "large", "medium", "small", "list"],
-    index=2  # default medium
+st.sidebar.subheader("Grid Columns (Pinterest view)")
+num_columns = st.sidebar.slider(
+    "Select number of columns",
+    min_value=1,
+    max_value=6,
+    value=3,
+    step=1
 )
 
 # ---------------- HEADER ----------------
@@ -39,7 +41,9 @@ products = [
     {"title": "Before & After", "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"},
     {"title": "Product 3", "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"},
     {"title": "Product 4", "media": "https://youtu.be/EIscMS9KW8k"},
-    {"title": "Product 5", "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"}
+    {"title": "Product 5", "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"},
+    {"title": "Product 6", "media": "https://i.ytimg.com/vi/0kJHbvrTx64/hq720.jpg"},
+    {"title": "Product 7", "media": "https://youtu.be/EIscMS9KW8k"}
 ]
 
-display_products(products, view=view_option)
+display_products(products, num_columns=num_columns)
