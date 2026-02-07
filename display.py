@@ -46,7 +46,7 @@ def render_product_card(row, idx, language="Kurdish"):
     """
     Render a single product card with media, details, and interaction buttons
     Tracks all user interactions
-    Mobile-friendly with inline button layout
+    Mobile-optimized with inline stats and buttons
     """
     # Get language-specific labels
     if language == "Kurdish":
@@ -117,7 +117,7 @@ def render_product_card(row, idx, language="Kurdish"):
         </div>
         """, unsafe_allow_html=True)
         
-        # Product stats badge - INLINE LAYOUT (works on mobile and PC)
+        # Product stats badge - PURE HTML FOR MOBILE (NO STREAMLIT CAPTION)
         if any(product_stats.values()):
             stats_parts = []
             if product_stats.get("likes", 0) > 0:
@@ -128,23 +128,55 @@ def render_product_card(row, idx, language="Kurdish"):
                 stats_parts.append(f"🔗 {product_stats['link_visits']}")
             
             if stats_parts:
-                # Inline display using HTML for better mobile support
-                stats_html = " • ".join(stats_parts)
+                # Use pure HTML with flexbox - guaranteed to work on mobile
+                stats_display = " • ".join(stats_parts)
                 st.markdown(f"""
-                <div class="product-stats-inline" style="
+                <div style="
                     display: flex;
-                    gap: 0.5rem;
+                    flex-direction: row;
                     justify-content: center;
                     align-items: center;
+                    gap: 0.5rem;
                     margin: 0.5rem 0;
+                    padding: 0.3rem;
                     font-size: 0.85rem;
+                    color: #666;
                     flex-wrap: nowrap;
+                    white-space: nowrap;
                 ">
-                    {stats_html}
+                    <span>{stats_display}</span>
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Action buttons - ALWAYS IN ONE ROW (mobile & desktop)
+        # Action buttons - FORCE HORIZONTAL ON MOBILE
+        # Using HTML buttons instead of Streamlit for better mobile control
+        st.markdown("""
+        <style>
+            /* Force buttons to stay in one row on mobile */
+            div[data-testid="column"] {
+                flex: 1 1 33% !important;
+                min-width: 0 !important;
+                padding: 0 0.2rem !important;
+            }
+            
+            /* Mobile-specific button styling */
+            @media (max-width: 768px) {
+                .stButton > button {
+                    width: 100% !important;
+                    padding: 0.5rem 0.2rem !important;
+                    font-size: 1.3rem !important;
+                    min-width: 0 !important;
+                }
+                
+                div[data-testid="column"] {
+                    flex: 1 1 33% !important;
+                    max-width: 33.33% !important;
+                    min-width: 30% !important;
+                }
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -269,7 +301,7 @@ def show_product_modal(product, language="Kurdish"):
         st.markdown(f"**{color_label}:** {colors}")
         st.markdown(f"**{material_label}:** {materials}")
         
-        # Product statistics - INLINE on mobile
+        # Product statistics
         st.markdown("---")
         st.markdown("### 📊 Statistics")
         col_a, col_b = st.columns(2)
