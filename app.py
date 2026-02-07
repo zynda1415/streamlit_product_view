@@ -3,6 +3,16 @@ from settings import load_google_sheet, sidebar_controls, load_analytics, save_a
 from display import display_products, show_product_modal
 from rotlogo import add_rotated_background_logo
 import pandas as pd
+import base64
+
+# Helper function for icon display
+def get_base64_image(image_path):
+    """Convert image to base64 for inline display"""
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return ""
 
 # ----------------- Page config -----------------
 st.set_page_config(
@@ -100,6 +110,28 @@ st.markdown("""
     .favorite-active {
         animation: heartBeat 0.5s ease;
     }
+    
+    /* View mode icon buttons */
+    div[data-testid="column"] button {
+        background: transparent !important;
+        border: 2px solid #e0e0e0 !important;
+        border-radius: 8px !important;
+        padding: 8px !important;
+        min-height: 50px !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    div[data-testid="column"] button:hover {
+        border-color: #4CAF50 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2) !important;
+    }
+    
+    /* Active state for selected view mode */
+    .view-mode-active {
+        border-color: #4CAF50 !important;
+        background: rgba(76, 175, 80, 0.1) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -139,15 +171,69 @@ except Exception as e:
 # ----------------- Sidebar -----------------
 language = sidebar_controls()
 
-# Columns selector
-st.sidebar.markdown("### 📊 View Settings")
-columns_count = st.sidebar.slider(
-    "📱 Columns",
-    min_value=1,
-    max_value=4,
-    value=2,
-    help="Adjust number of columns for your screen"
-)
+# Initialize columns_count in session state
+if "columns_count" not in st.session_state:
+    st.session_state.columns_count = 2
+
+# View mode selector with icons
+st.sidebar.markdown("### 📊 View Mode")
+
+# View mode configuration
+view_modes = {
+    "List View": {"icon": "icons/list-view.png", "columns": 1},
+    "Single": {"icon": "icons/single-view.png", "columns": 1},
+    "Grid 2×2": {"icon": "icons/grid-2.png", "columns": 2},
+    "Grid 3×3": {"icon": "icons/grid-3.png", "columns": 3}
+}
+
+# Create 4 columns for icons
+icon_cols = st.sidebar.columns(4)
+
+for idx, (mode_name, mode_data) in enumerate(view_modes.items()):
+    with icon_cols[idx]:
+        # Check if this is the active mode
+        is_active = st.session_state.columns_count == mode_data['columns']
+        
+        # Create clickable container
+        try:
+            # Read and encode icon
+            with open(mode_data['icon'], "rb") as img_file:
+                icon_b64 = base64.b64encode(img_file.read()).decode()
+            
+            # Create custom HTML button with icon
+            button_html = f"""
+            <div style="text-align: center; margin-bottom: 8px;">
+                <div style="
+                    border: 2px solid {'#4CAF50' if is_active else '#e0e0e0'};
+                    background: {'rgba(76, 175, 80, 0.1)' if is_active else 'transparent'};
+                    border-radius: 8px;
+                    padding: 8px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    min-height: 50px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                ">
+                    <img src="data:image/png;base64,{icon_b64}" 
+                         style="width: 32px; height: 32px; opacity: {'1.0' if is_active else '0.5'};">
+                </div>
+            </div>
+            """
+            st.markdown(button_html, unsafe_allow_html=True)
+            
+            # Invisible button for functionality
+            if st.button("​", key=f"view_{idx}", help=mode_name, use_container_width=True):
+                st.session_state.columns_count = mode_data['columns']
+                st.rerun()
+                
+        except Exception as e:
+            # Fallback text button
+            if st.button(mode_name[:1], key=f"view_{idx}_fb", help=mode_name, use_container_width=True):
+                st.session_state.columns_count = mode_data['columns']
+                st.rerun()
+
+columns_count = st.session_state.columns_count
 
 # ----------------- Load Google Sheet with error handling -----------------
 try:
@@ -316,10 +402,10 @@ if st.sidebar.button("🔄 Reset All Filters", use_container_width=True):
     st.rerun()
 
 # ----------------- Main content -----------------
-# Header with stats
+# Header with stats (removed "📦 Asankar Products" title)
 col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
-    st.markdown("# 📦 Asankar Products")
+    st.markdown("")  # Empty space where title was
 with col2:
     st.metric("Showing", min(st.session_state.visible_count, len(filtered_df)))
 with col3:
