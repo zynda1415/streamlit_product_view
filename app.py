@@ -1,6 +1,7 @@
 import streamlit as st
 from settings import load_google_sheet, sidebar_controls
 from display import display_products
+from rotlogo import add_rotated_background_logo
 
 # ----------------- Page config -----------------
 st.set_page_config(
@@ -8,37 +9,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------- Rotated background logo -----------------
-def add_rotated_background_logo(logo_path="background_logo.png", rotation=-30, opacity=0.05, size="200px"):
-    """
-    Adds a rotated logo in the background.
-    """
-    st.markdown(f"""
-    <style>
-    body {{
-        position: relative;
-    }}
-    .rotated-logo {{
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        width: {size};
-        height: auto;
-        transform: translate(-50%, -50%) rotate({rotation}deg);
-        opacity: {opacity};
-        z-index: 0;
-        pointer-events: none;
-    }}
-    .stApp {{
-        z-index: 1;
-    }}
-    </style>
-    <img src="{logo_path}" class="rotated-logo">
-    """, unsafe_allow_html=True)
-
-# Add the background logo
+# ----------------- Add rotated background logo -----------------
 add_rotated_background_logo(
-    logo_path="background_logo.png",
+    logo_path="background_logo.png",  # Make sure file exists
     rotation=-25,
     opacity=0.05,
     size="300px"
@@ -47,6 +20,7 @@ add_rotated_background_logo(
 # ----------------- Sidebar -----------------
 language = sidebar_controls()
 
+# Columns selector
 columns_count = st.sidebar.slider(
     "View Columns",
     min_value=1,
@@ -54,6 +28,7 @@ columns_count = st.sidebar.slider(
     value=2
 )
 
+# Tag search filter
 tag_search = st.sidebar.text_input("Search tags")
 
 # ----------------- Load Google Sheet -----------------
