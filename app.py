@@ -22,12 +22,20 @@ st_autorefresh(interval=3600000, key="hourly_refresh")
 # ---------- SIDEBAR ----------
 sidebar_logo()
 
-st.sidebar.markdown("### View")
-columns = st.sidebar.slider("Columns", 1, 5, 3)
+language = st.sidebar.radio(
+    "Language",
+    ["Kurdish", "Arabic"],
+    horizontal=True
+)
 
-st.sidebar.markdown("### Filters")
-kurdish_filter = st.sidebar.text_input("Kurdish tags")
-arabic_filter = st.sidebar.text_input("Arabic tags")
+columns = st.sidebar.slider(
+    "View columns",
+    min_value=1,
+    max_value=4,
+    value=2
+)
+
+tag_search = st.sidebar.text_input("Search tags")
 
 if st.sidebar.button("🔄 Refresh now"):
     st.rerun()
@@ -63,35 +71,47 @@ if st.session_state.get("sheet_sig") != sig:
 df = pd.DataFrame(records)
 
 # ---------- VALIDATION ----------
-required_cols = ["URL", "Kurdish Tags", "Arabic Tags"]
-for col in required_cols:
-    if col not in df.columns:
-        st.error(f"Missing column: {col}")
+required_cols = [
+    "URL",
+    "Kurdish Tags", "Kurdish Color Tags", "Kurdish Material Tags",
+    "Arabic Tags", "Arabic Colors Tags", "Arabic Material Tags"
+]
+
+for c in required_cols:
+    if c not in df.columns:
+        st.error(f"Missing column: {c}")
         st.stop()
 
-# ---------- TAG FILTERS ----------
-if kurdish_filter:
-    df = df[df["Kurdish Tags"].str.contains(kurdish_filter, case=False, na=False)]
+# ---------- TAG FILTER ----------
+if tag_search:
+    df = df[df.apply(
+        lambda r: tag_search.lower() in " ".join(r.astype(str)).lower(),
+        axis=1
+    )]
 
-if arabic_filter:
-    df = df[df["Arabic Tags"].str.contains(arabic_filter, case=False, na=False)]
-
-# ---------- LAZY LOADING ----------
+# ---------- LAZY LOAD ----------
 if "visible_count" not in st.session_state:
     st.session_state.visible_count = 12
 
 st.markdown("## 📦 Products")
 
-masonry_grid(df, columns, st.session_state.visible_count)
+masonry_grid(
+    df,
+    columns=columns,
+    visible_count=st.session_state.visible_count,
+    language=language
+)
 
 if st.session_state.visible_count < len(df):
     if st.button("⬇ Load more"):
         st.session_state.visible_count += 12
         st.rerun()
 
-# ---------- MOBILE OPTIMIZATION ----------
+# ---------- MOBILE ----------
 st.markdown("""
 <style>
-.block-container { padding-top: 1rem; }
+@media (max-width: 768px) {
+    .block-container { padding: 1rem; }
+}
 </style>
 """, unsafe_allow_html=True)
