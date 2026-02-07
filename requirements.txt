@@ -1,5 +1,5 @@
 streamlit
-pillow
-pandas
 gspread
 google-auth
+streamlit-autorefresh
+pillow
