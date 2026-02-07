@@ -1,6 +1,6 @@
 import streamlit as st
 from settings import load_google_sheet, sidebar_controls
-from display import masonry_grid
+from display import display_products
 
 # ----------------- Page config -----------------
 st.set_page_config(
@@ -11,8 +11,8 @@ st.set_page_config(
 # ----------------- Sidebar -----------------
 language = sidebar_controls()
 
-# Columns selector for masonry layout
-columns = st.sidebar.slider(
+# Columns selector
+columns_count = st.sidebar.slider(
     "View Columns",
     min_value=1,
     max_value=4,
@@ -25,19 +25,19 @@ tag_search = st.sidebar.text_input("Search tags")
 # ----------------- Load Google Sheet -----------------
 df = load_google_sheet()
 
-# ----------------- Apply search filter -----------------
+# Apply search filter
 if tag_search:
     df = df[df.apply(lambda r: tag_search.lower() in " ".join(r.astype(str)).lower(), axis=1)]
 
-# ----------------- Lazy loading -----------------
+# Lazy loading
 if "visible_count" not in st.session_state:
     st.session_state.visible_count = 12
 
 st.markdown("## 📦 Products")
-masonry_grid(
+display_products(
     df,
     language=language,
-    columns=columns,
+    columns_count=columns_count,
     visible_count=st.session_state.visible_count
 )
 
@@ -47,11 +47,11 @@ if st.session_state.visible_count < len(df):
         st.session_state.visible_count += 12
         st.experimental_rerun()
 
-# ----------------- Mobile adjustments -----------------
+# Mobile adjustments
 st.markdown("""
 <style>
-@media (max-width: 768px) {{
-    .block-container {{ padding: 1rem; }}
-}}
+@media (max-width: 768px) {
+    .block-container { padding: 1rem; }
+}
 </style>
 """, unsafe_allow_html=True)
