@@ -26,12 +26,19 @@ def save_data(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def sidebar_logo_and_language(data):
+    from display import FALLBACK_LOGO, show_logo  # avoid circular import
+
+    # ---------------- LOGO ----------------
+    logo_url = data.get("logo_url", "")
+    show_logo(logo_url, in_sidebar=True)  # display fallback if URL empty
+
+    # ---------------- SETTINGS ----------------
     st.sidebar.subheader("⚙️ Settings")
 
-    # OPTIONAL logo URL
-    logo_url = st.sidebar.text_input(
+    # OPTIONAL logo URL override
+    logo_url_input = st.sidebar.text_input(
         "Logo URL (optional)",
-        value=data.get("logo_url", ""),
+        value=logo_url,
         key="logo_url_unique"
     )
 
@@ -42,9 +49,9 @@ def sidebar_logo_and_language(data):
         key="language_unique"
     )
 
-    if logo_url != data.get("logo_url") or language != data.get("language"):
-        data["logo_url"] = logo_url
+    if logo_url_input != data.get("logo_url") or language != data.get("language"):
+        data["logo_url"] = logo_url_input
         data["language"] = language
         save_data(data)
 
-    return logo_url, language
+    return logo_url_input, language
